@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #090C16;
+    --bg-card: #1C243A;
+    --neon-cyan: #00E5FF;
+    --neon-violet: #7C4DFF;
+    --live-red: #FF3B5C;
+    --quality-gold: #FFC857;
+  }
+
+  html, body {
+    background-color: #090C16;
+    color: #F8FAFC;
+    font-family: 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.neon-gradient {
+  background: linear-gradient(135deg, #00E5FF 0%, #7C4DFF 100%);
+}
+
+.neon-gradient-text {
+  background: linear-gradient(135deg, #00E5FF 0%, #7C4DFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-card {
+  background: rgba(28, 36, 58, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.glass-nav {
+  background: rgba(16, 22, 40, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(28,36,58,0.6) 25%, rgba(45,58,92,0.7) 50%, rgba(28,36,58,0.6) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
