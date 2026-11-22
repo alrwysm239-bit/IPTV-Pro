@@ -111,14 +111,28 @@ export const CORS_PROXY_PRESETS = [
 
 export const CATEGORIES: { id: CategoryId; ar: string; en: string }[] = [
   { id: 'all', ar: 'الكل', en: 'All' },
-  { id: 'sports', ar: 'رياضة', en: 'Sports' },
   { id: 'news', ar: 'أخبار', en: 'News' },
-  { id: 'movies', ar: 'أفلام', en: 'Movies' },
+  { id: 'sports', ar: 'رياضة', en: 'Sports' },
+  { id: 'movies', ar: 'أفلام ومسلسلات', en: 'Movies & Series' },
+  { id: 'variety', ar: 'منوعة وترفيه', en: 'Variety' },
   { id: 'kids', ar: 'أطفال', en: 'Kids' },
-  { id: 'music', ar: 'موسيقى', en: 'Music' },
   { id: 'docs', ar: 'وثائقي', en: 'Docs' },
-  { id: 'variety', ar: 'منوعة', en: 'Variety' },
+  { id: 'religious', ar: 'دينية', en: 'Religious' },
+  { id: 'music', ar: 'موسيقى', en: 'Music' },
+  { id: 'other', ar: 'أخرى', en: 'Other' },
 ];
+
+export const CATEGORY_ORDER: Record<Exclude<CategoryId, 'all'>, number> = {
+  news: 0,
+  sports: 1,
+  movies: 2,
+  variety: 3,
+  kids: 4,
+  docs: 5,
+  religious: 6,
+  music: 7,
+  other: 8,
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   language: 'ar',
@@ -139,6 +153,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastHealthCheckAt: null,
   lastChannelId: null,
   volume: 0.9,
+  channelsSortBy: 'default',
+  channelsCategory: 'all',
 };
 
 export const TELEGRAM_URL = 'https://t.me/qweqwe2019bot2bot';

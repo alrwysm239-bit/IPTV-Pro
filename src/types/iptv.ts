@@ -2,24 +2,48 @@ export type TabId = 'home' | 'channels' | 'favorites' | 'settings';
 
 export type CategoryId =
   | 'all'
-  | 'sports'
   | 'news'
+  | 'sports'
   | 'movies'
+  | 'variety'
   | 'kids'
-  | 'music'
   | 'docs'
-  | 'variety';
+  | 'religious'
+  | 'music'
+  | 'other';
 
 export type QualityTier = '4K' | 'FHD' | 'HD' | 'SD';
 
 export type HealthStatus = 'untested' | 'checking' | 'online' | 'dead' | 'uncertain';
 
+export type SortOption =
+  | 'default'
+  | 'name-asc'
+  | 'name-desc'
+  | 'views'
+  | 'newest'
+  | 'quality'
+  | 'country';
+
+export interface ChannelServer {
+  url: string;
+  quality: QualityTier;
+  source: string;
+  latencyMs?: number;
+}
+
 export interface Channel {
   id: string;
   name: string;
+  rawName?: string;
+  nameAr?: string;
+  nameEn?: string;
+  badges?: string[];
+  fameScore?: number;
   normName: string;
   url: string;
   fallbacks: string[];
+  servers?: ChannelServer[];
   logo: string;
   group: string;
   category: Exclude<CategoryId, 'all'>;
@@ -94,6 +118,8 @@ export interface AppSettings {
   lastHealthCheckAt: number | null;
   lastChannelId: string | null;
   volume: number;
+  channelsSortBy: SortOption;
+  channelsCategory: CategoryId;
 }
 
 export interface SourceFetchStats {
