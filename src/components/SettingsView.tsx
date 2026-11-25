@@ -23,19 +23,32 @@ import {
   Activity,
   RotateCcw,
   History,
+  KeyRound,
+  UserCheck,
+  ExternalLink,
+  Server,
 } from 'lucide-react';
-import { CORS_PROXY_PRESETS, TELEGRAM_URL } from '../constants/sources';
-import { AppSettings, DeletedLogItem, M3USource, SourceFetchStats } from '../types/iptv';
+import { CORS_PROXY_PRESETS } from '../constants/sources';
+import {
+  AppSettings,
+  DeletedLogItem,
+  M3USource,
+  SourceFetchStats,
+  XtreamSource,
+} from '../types/iptv';
 
 interface SettingsViewProps {
   settings: AppSettings;
   sources: M3USource[];
+  xtreamSources: XtreamSource[];
   stats: SourceFetchStats;
   totalChannels: number;
   blacklistCount: number;
   deletedLog: DeletedLogItem[];
   isFetching: boolean;
   isCheckingHealth: boolean;
+  onOpenAdmin: () => void;
+  onSelectXtreamSource: (id: string) => void;
   onUpdateSettings: (patch: Partial<AppSettings>) => void;
   onToggleSource: (id: string) => void;
   onDeleteSource: (id: string) => void;
@@ -52,12 +65,15 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   sources,
+  xtreamSources,
   stats,
   totalChannels,
   blacklistCount,
   deletedLog,
   isFetching,
   isCheckingHealth,
+  onOpenAdmin,
+  onSelectXtreamSource,
   onUpdateSettings,
   onToggleSource,
   onDeleteSource,
@@ -84,6 +100,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [toastMsg, setToastMsg] = useState('');
 
   const Chevron = isAr ? ChevronLeft : ChevronRight;
+  const activeXtream =
+    xtreamSources.find((s) => s.id === settings.activeXtreamSourceId) || xtreamSources[0];
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -115,11 +133,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* بطاقة الهوية والنسخة */}
       <div className="neon-gradient rounded-3xl p-5 flex items-center justify-between shadow-[0_14px_34px_rgba(0,229,255,0.22)]">
         <div className="space-y-1">
-          <h2 className="text-xl font-extrabold text-white tracking-tight">IPTV PRO</h2>
+          <h2 className="text-xl font-extrabold text-white tracking-tight">
+            {settings.appName || 'IPTV PRO'}
+          </h2>
           <p className="text-xs font-bold text-white/90 tabular-nums">
             {isAr
-              ? `الإصدار 1.0 • مفعّل • ${totalChannels.toLocaleString()} قناة`
-              : `v1.0 • Active • ${totalChannels.toLocaleString()} channels`}
+              ? `الإصدار 2.0 • مفعّل • ${totalChannels.toLocaleString()} قناة`
+              : `v2.0 • Active • ${totalChannels.toLocaleString()} channels`}
           </p>
         </div>
         <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#7C4DFF] shadow-lg">
@@ -127,8 +147,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* قائمة الإعدادات المطابقة لستايل التصميم */}
+      {/* قائمة الإعدادات */}
       <div className="space-y-2.5">
+        {/* لوحة التحكم المحمية بكلمة مرور */}
+        <SettingRow
+          icon={<KeyRound className="w-5 h-5 text-white" />}
+          iconBg="bg-gradient-to-br from-[#00E5FF] to-[#7C4DFF]"
+          title={isAr ? 'لوحة التحكم' : 'Control Panel'}
+          subtitle={
+            isAr
+              ? 'إدارة السيرفر والأقسام والمظهر وكلمة المرور'
+              : 'Manage server, categories, appearance & password'
+          }
+          onClick={onOpenAdmin}
+          right={<Chevron className="w-4 h-4 text-[#00E5FF]" />}
+        />
+
         {/* إعدادات المشغل */}
         <SettingRow
           icon={<PlayCircle className="w-5 h-5 text-white" />}
@@ -149,9 +183,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           iconBg="bg-[#7C4DFF]"
           title={isAr ? 'إدارة المصادر' : 'Manage Sources'}
           subtitle={
-            isAr
-              ? `${sources.filter((s) => s.enabled).length} من ${sources.length} مصدر مفعل`
-              : `${sources.filter((s) => s.enabled).length} of ${sources.length} sources enabled`
+            activeXtream
+              ? `${activeXtream.name} • ${sources.length > 0 ? `+ ${sources.length} M3U` : 'Xtream API'}`
+              : `${sources.filter((s) => s.enabled).length} ${isAr ? 'مصدر' : 'sources'}`
           }
           onClick={() => setShowSourcesModal(true)}
           right={<Chevron className="w-4 h-4 text-slate-400" />}
@@ -338,51 +372,56 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           right={<Chevron className="w-4 h-4 text-slate-400" />}
         />
 
-        {/* تصدير ملف HTML واحد للتحويل إلى APK */}
-        <a
-          href="/iptv-pro.html"
-          download="IPTV-Pro.html"
-          className="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-3 hover:border-[#00E5FF]/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#00E5FF]/20 text-[#00E5FF] flex items-center justify-center shrink-0">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-white">
-                {isAr ? 'تنزيل ملف HTML واحد (APK)' : 'Download Single HTML (APK)'}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {isAr
-                  ? 'ملف مستقل كامل جاهز للتحويل إلى تطبيق أندرويد'
-                  : 'Standalone HTML+CSS+JS ready for APK'}
-              </p>
-            </div>
-          </div>
-          <Chevron className="w-4 h-4 text-[#00E5FF]" />
-        </a>
+        {/* قنواتنا على تيليجرام للاشتراك */}
+        <div className="pt-1 space-y-2">
+          <p className="text-xs font-extrabold text-slate-300 px-1">
+            {isAr ? 'قنواتنا على تيليجرام للاشتراك' : 'Official Telegram Channels'}
+          </p>
+          {settings.telegramLinks.map((lnk) => (
+            <a
+              key={lnk.id}
+              href={lnk.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-3 border-[#229ED9]/40 hover:border-[#229ED9] transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#229ED9] text-white flex items-center justify-center shrink-0">
+                  <Send className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold text-white truncate">{lnk.name}</p>
+                  <p className="text-[11px] text-slate-400 truncate" dir="ltr">
+                    {lnk.url.replace(/^https?:\/\//, '')}
+                  </p>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-[#229ED9] shrink-0" />
+            </a>
+          ))}
+        </div>
 
-        {/* قناتنا على تيليجرام */}
+        {/* حقوق المطور */}
         <a
-          href={TELEGRAM_URL}
+          href={settings.devUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-3 border-[#229ED9]/40 hover:border-[#229ED9] transition-colors"
+          className="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-3 border-[#00E5FF]/40 hover:border-[#00E5FF] transition-colors"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#229ED9] text-white flex items-center justify-center shrink-0">
-              <Send className="w-5 h-5" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl neon-gradient text-white flex items-center justify-center shrink-0">
+              <UserCheck className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-sm font-extrabold text-white">
-                {isAr ? 'قناتنا على تيليجرام' : 'Our Telegram Channel'}
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-white truncate">
+                {isAr ? 'حقوق المطور' : 'Developer Credits'}
               </p>
-              <p className="text-[11px] text-slate-400" dir="ltr">
-                t.me/qweqwe2019bot2bot
+              <p className="text-[11px] text-[#00E5FF] truncate font-bold" dir="ltr">
+                @{settings.devName.replace(/^@/, '')} · {settings.devUrl}
               </p>
             </div>
           </div>
-          <Chevron className="w-4 h-4 text-[#229ED9]" />
+          <ExternalLink className="w-4 h-4 text-[#00E5FF] shrink-0" />
         </a>
 
         {/* معلومات التطبيق */}
@@ -390,7 +429,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           icon={<Info className="w-5 h-5 text-white" />}
           iconBg="bg-[#334155]"
           title={isAr ? 'معلومات التطبيق' : 'App Info'}
-          subtitle="IPTV Pro v1.0 • Web Worker + IndexedDB + HLS/DASH"
+          subtitle={`${settings.appName || 'IPTV Pro'} v2.0 • Xtream + HLS/DASH`}
           onClick={() => setShowAboutModal(true)}
           right={<Chevron className="w-4 h-4 text-slate-400" />}
         />
@@ -399,10 +438,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* نافذة إدارة المصادر */}
       {showSourcesModal && (
         <ModalWrapper
-          title={isAr ? 'إدارة المصادر (11 مصدراً + مخصص)' : 'Manage M3U Sources'}
+          title={isAr ? 'إدارة المصادر' : 'Manage Sources'}
           onClose={() => setShowSourcesModal(false)}
         >
           <div className="space-y-4">
+            {/* قائمة سيرفرات Xtream الثلاثة */}
+            <div className="space-y-2">
+              {xtreamSources.map((src) => {
+                const isActive = src.id === settings.activeXtreamSourceId;
+                return (
+                  <div
+                    key={src.id}
+                    className={`bg-[#090C16]/85 border rounded-2xl p-3 space-y-1.5 ${
+                      isActive ? 'border-[#00E5FF]/60' : 'border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Server className="w-4 h-4 text-[#00E5FF] shrink-0" />
+                        <span className="text-xs font-extrabold text-white truncate">
+                          {src.name}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onSelectXtreamSource(src.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold cursor-pointer shrink-0 ${
+                          isActive
+                            ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/50'
+                            : 'bg-white/5 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {isActive ? (isAr ? 'مفعل' : 'Active') : isAr ? 'تفعيل' : 'Activate'}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="truncate" dir="ltr">
+                        {src.server}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        {src.channelCount > 0 ? `${src.channelCount.toLocaleString()} ${isAr ? 'قناة' : 'ch'}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSourcesModal(false);
+                  onOpenAdmin();
+                }}
+                className="w-full min-h-[38px] rounded-xl bg-white/5 hover:bg-white/10 text-[#00E5FF] text-xs font-bold cursor-pointer"
+              >
+                {isAr ? 'تعديل أو إضافة سيرفر من لوحة التحكم' : 'Edit / Add Server in Control Panel'}
+              </button>
+            </div>
+
             {/* إعداد وسيط CORS */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300">
@@ -437,7 +530,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {/* إضافة مصدر رابط M3U أو ملف من الجهاز */}
             <form onSubmit={handleAddSource} className="space-y-2 border-t border-white/10 pt-3">
               <p className="text-xs font-bold text-[#00E5FF]">
-                {isAr ? 'إضافة مصدر M3U خاص' : 'Add Custom M3U Source'}
+                {isAr ? 'إضافة مصدر M3U إضافي (اختياري)' : 'Add Extra M3U Source (Optional)'}
               </p>
               <input
                 type="text"
@@ -486,39 +579,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="w-full neon-gradient py-2.5 rounded-xl text-xs font-extrabold text-white inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-              <span>{isAr ? 'تحديث جميع المصادر الآن' : 'Refresh All Sources Now'}</span>
+              <span>{isAr ? 'تحديث القنوات الآن' : 'Refresh Channels Now'}</span>
             </button>
 
-            {/* قائمة المصادر وإحصائيات القنوات */}
-            <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
-              {sources.map((src) => (
-                <div
-                  key={src.id}
-                  className="bg-[#090C16]/80 border border-white/10 rounded-xl p-2.5 flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          src.status === 'success'
-                            ? 'bg-emerald-400'
-                            : src.status === 'loading'
-                              ? 'bg-[#00E5FF] animate-pulse'
-                              : src.status === 'error'
-                                ? 'bg-[#FF3B5C]'
-                                : 'bg-slate-500'
-                        }`}
-                      />
-                      <p className="text-xs font-bold text-white truncate">{src.name}</p>
+            {/* قائمة مصادر M3U المضافة يدوياً إن وجدت */}
+            {sources.length > 0 && (
+              <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar">
+                {sources.map((src) => (
+                  <div
+                    key={src.id}
+                    className="bg-[#090C16]/80 border border-white/10 rounded-xl p-2.5 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            src.status === 'success'
+                              ? 'bg-emerald-400'
+                              : src.status === 'loading'
+                                ? 'bg-[#00E5FF] animate-pulse'
+                                : src.status === 'error'
+                                  ? 'bg-[#FF3B5C]'
+                                  : 'bg-slate-500'
+                          }`}
+                        />
+                        <p className="text-xs font-bold text-white truncate">{src.name}</p>
+                      </div>
+                      <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                        {src.channelCount.toLocaleString()} {isAr ? 'قناة' : 'ch'} •{' '}
+                        {src.status === 'error' ? (isAr ? 'تم التجاوز' : 'Skipped') : src.status}
+                      </p>
                     </div>
-                    <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
-                      {src.channelCount.toLocaleString()} {isAr ? 'قناة' : 'ch'} •{' '}
-                      {src.status === 'error' ? (isAr ? 'تم التجاوز' : 'Skipped') : src.status}
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {src.custom && (
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => onDeleteSource(src.id)}
@@ -526,15 +619,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <ToggleSwitch
-                      checked={src.enabled}
-                      onChange={() => onToggleSource(src.id)}
-                    />
+                      <ToggleSwitch
+                        checked={src.enabled}
+                        onChange={() => onToggleSource(src.id)}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </ModalWrapper>
       )}
@@ -832,21 +925,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* نافذة معلومات التطبيق */}
       {showAboutModal && (
         <ModalWrapper
-          title={isAr ? 'حول IPTV Pro' : 'About IPTV Pro'}
+          title={isAr ? `حول ${settings.appName || 'IPTV Pro'}` : `About ${settings.appName || 'IPTV Pro'}`}
           onClose={() => setShowAboutModal(false)}
         >
           <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-            <p className="font-bold text-white">IPTV Pro v1.0</p>
+            <p className="font-bold text-white">{settings.appName || 'IPTV Pro'} v2.0</p>
             <p>
               {isAr
-                ? 'مشغل بث مباشر احترافي يدعم HLS وDASH وMP4 وTS مع تحليل M3U داخل Web Worker وتخزين مؤقت ذكي في IndexedDB.'
-                : 'Professional live TV player supporting HLS, DASH, MP4, and TS with Web Worker M3U parsing and IndexedDB caching.'}
+                ? 'مشغل بث مباشر احترافي يدعم HLS وDASH وMP4 وTS مع لوحة تحكم متكاملة، فحص ذكي للقنوات، وتخزين مؤقت في IndexedDB.'
+                : 'Professional live TV player supporting HLS, DASH, MP4, and TS with a full control panel, smart stream health checker, and IndexedDB caching.'}
             </p>
-            <p className="text-[#00E5FF]">
-              {isAr
-                ? 'يمكنك تنزيل نسخة ملف HTML الواحد مباشرة من الإعدادات لتحويلها إلى APK عبر Capacitor أو WebView.'
-                : 'Download the standalone single-file HTML from Settings to package directly as an Android APK.'}
-            </p>
+            <div className="bg-[#090C16]/80 border border-white/10 rounded-xl p-3 space-y-1">
+              <p className="text-white font-bold">
+                {isAr ? 'المطور والحقوق:' : 'Developer & Credits:'}
+              </p>
+              <a
+                href={settings.devUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#00E5FF] font-bold hover:underline inline-flex items-center gap-1.5"
+                dir="ltr"
+              >
+                <span>@{settings.devName.replace(/^@/, '')}</span>
+                <span>·</span>
+                <span>{settings.devUrl}</span>
+              </a>
+            </div>
           </div>
         </ModalWrapper>
       )}

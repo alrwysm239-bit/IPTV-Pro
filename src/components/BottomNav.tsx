@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Tv, Heart, Settings } from 'lucide-react';
+import { Home, Tv, Heart, Send, Settings } from 'lucide-react';
 import { TabId } from '../types/iptv';
 
 interface BottomNavProps {
@@ -13,14 +13,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChange, lang 
     { id: 'home', labelAr: 'الرئيسية', labelEn: 'Home', Icon: Home },
     { id: 'channels', labelAr: 'القنوات', labelEn: 'Channels', Icon: Tv },
     { id: 'favorites', labelAr: 'المفضلة', labelEn: 'Favorites', Icon: Heart },
+    { id: 'telegram', labelAr: 'قنواتنا', labelEn: 'Telegram', Icon: Send },
     { id: 'settings', labelAr: 'الإعدادات', labelEn: 'Settings', Icon: Settings },
   ];
 
   return (
-    <div className="fixed bottom-3 inset-x-0 z-40 px-4 pointer-events-none flex justify-center">
+    <div className="fixed bottom-3 inset-x-0 z-40 px-3 pointer-events-none flex justify-center">
       <nav
         aria-label={lang === 'ar' ? 'التنقل الرئيسي' : 'Main Navigation'}
-        className="pointer-events-auto glass-nav w-full max-w-md md:max-w-lg rounded-3xl px-2 py-1.5 grid grid-cols-4 gap-1"
+        className="pointer-events-auto glass-nav w-full max-w-lg rounded-3xl px-1.5 py-1.5 grid grid-cols-5 gap-1"
       >
         {items.map(({ id, labelAr, labelEn, Icon }) => {
           const active = activeTab === id;
@@ -29,14 +30,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChange, lang 
               key={id}
               type="button"
               onClick={() => onChange(id)}
-              className={`min-h-[48px] rounded-2xl flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 transition-all duration-200 cursor-pointer ${
+              className={`min-h-[48px] rounded-2xl flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-all duration-200 cursor-pointer ${
                 active
                   ? 'neon-gradient text-white shadow-[0_6px_20px_rgba(0,229,255,0.3)]'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-[11px] font-bold whitespace-nowrap">
+              <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">
                 {lang === 'ar' ? labelAr : labelEn}
               </span>
             </button>

@@ -16,20 +16,36 @@ import {
   X,
   Play,
   RefreshCw,
+  Copy,
+  Check,
+  Server,
 } from 'lucide-react';
 import { CATEGORIES } from '../constants/sources';
-import { AppSettings, CategoryId, Channel, QualityTier } from '../types/iptv';
+import {
+  AppSettings,
+  CategoryId,
+  Channel,
+  QualityTier,
+  XtreamCategory,
+  XtreamSource,
+} from '../types/iptv';
 import { ChannelLogo } from './ChannelLogo';
 
 interface ChannelsViewProps {
   channels: Channel[];
+  xtreamSources: XtreamSource[];
+  xtreamCategories: XtreamCategory[];
   favoriteIds: Set<string>;
   currentChannelId: string | null;
   settings: AppSettings;
   initialCategory?: CategoryId;
+  initialXtreamCategory?: string;
+  isFetching?: boolean;
   isCheckingHealth: boolean;
   onPlay: (channel: Channel) => void;
   onToggleFavorite: (channelId: string) => void;
+  onSelectXtreamSource: (id: string) => void;
+  onRefresh?: () => void;
   onStartHealthScan: (mode: 'quick' | 'full', priorityList: Channel[]) => void;
   onOpenScanProgress: () => void;
   onToggleHideOffline: () => void;
@@ -52,13 +68,19 @@ function normalizeSearch(s: string): string {
 
 export const ChannelsView: React.FC<ChannelsViewProps> = ({
   channels,
+  xtreamSources,
+  xtreamCategories,
   favoriteIds,
   currentChannelId,
   settings,
   initialCategory = 'all',
+  initialXtreamCategory = 'all',
+  isFetching = false,
   isCheckingHealth,
   onPlay,
   onToggleFavorite,
+  onSelectXtreamSource,
+  onRefresh,
   onStartHealthScan,
   onOpenScanProgress,
   onToggleHideOffline,
@@ -71,6 +93,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
   const [rawQuery, setRawQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [category, setCategory] = useState<CategoryId>(initialCategory);
+  const [xtreamCatFilter, setXtreamCatFilter] = useState<string>(initialXtreamCategory);
   const [countryFilter, setCountryFilter] = useState<string>('all');
   const [langFilter, setLangFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
@@ -83,6 +106,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
   const [multiMode, setMultiMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailChannel, setDetailChannel] = useState<Channel | null>(null);
+  const [copiedDetailUrl, setCopiedDetailUrl] = useState(false);
   const longPressRef = useRef<number | null>(null);
   const longPressedFlagRef = useRef(false);
 
@@ -93,6 +117,14 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
   useEffect(() => {
     setCategory(initialCategory);
   }, [initialCategory]);
+
+  useEffect(() => {
+    setXtreamCatFilter(initialXtreamCategory);
+  }, [initialXtreamCategory]);
+
+  useEffect(() => {
+    setXtreamCatFilter('all');
+  }, [settings.activeXtreamSourceId]);
 
   // تأجيل البحث 200ms Debounce
   useEffect(() => {
@@ -109,6 +141,11 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
     window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
   }, [showFilters, multiMode]);
+
+  const visibleXtreamCategories = useMemo(
+    () => xtreamCategories.filter((c) => !settings.hiddenCategoryIds.includes(c.category_id)),
+    [xtreamCategories, settings.hiddenCategoryIds]
+  );
 
   const filterOptions = useMemo(() => {
     const countries = new Set<string>();
@@ -134,6 +171,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
       const ch = channels[i];
       if (settings.onlineOnlyFilter && ch.health !== 'online') continue;
       if (settings.hideOffline && ch.health === 'dead') continue;
+      if (xtreamCatFilter !== 'all' && ch.xtreamCategoryId !== xtreamCatFilter) continue;
       if (category !== 'all' && ch.category !== category) continue;
       if (countryFilter !== 'all' && ch.country !== countryFilter) continue;
       if (langFilter !== 'all' && ch.language !== langFilter) continue;
@@ -160,6 +198,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
     channels,
     settings.onlineOnlyFilter,
     settings.hideOffline,
+    xtreamCatFilter,
     category,
     countryFilter,
     langFilter,
@@ -191,6 +230,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
     if (longPressRef.current) window.clearTimeout(longPressRef.current);
     longPressRef.current = window.setTimeout(() => {
       longPressedFlagRef.current = true;
+      setCopiedDetailUrl(false);
       setDetailChannel(ch);
     }, 550);
   };
@@ -199,6 +239,16 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
     if (longPressRef.current) {
       window.clearTimeout(longPressRef.current);
       longPressRef.current = null;
+    }
+  };
+
+  const handleCopyDetailUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedDetailUrl(true);
+      window.setTimeout(() => setCopiedDetailUrl(false), 1800);
+    } catch {
+      // تجاهل خطأ الحافظة بصمت
     }
   };
 
@@ -389,25 +439,66 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
         />
       </div>
 
-      {/* شرائح التصنيفات */}
+      {/* شريط تبديل السيرفرات */}
+      {xtreamSources.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          {xtreamSources.map((src) => {
+            const active = src.id === settings.activeXtreamSourceId;
+            return (
+              <button
+                key={src.id}
+                type="button"
+                onClick={() => {
+                  setXtreamCatFilter('all');
+                  onSelectXtreamSource(src.id);
+                }}
+                className={`shrink-0 whitespace-nowrap min-h-[36px] px-3 py-1 rounded-xl text-xs font-extrabold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/60'
+                    : 'glass-card text-slate-300 hover:text-white'
+                }`}
+              >
+                <Server className="w-3 h-3 shrink-0" />
+                <span>{src.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* شرائح أقسام الباقة */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 py-0.5">
-        {CATEGORIES.map((cat) => {
-          const active = category === cat.id;
+        <button
+          type="button"
+          onClick={() => {
+            setXtreamCatFilter('all');
+            if (listRef.current) listRef.current.scrollTop = 0;
+          }}
+          className={`shrink-0 whitespace-nowrap min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            xtreamCatFilter === 'all'
+              ? 'neon-gradient text-white shadow-[0_4px_14px_rgba(0,229,255,0.28)]'
+              : 'glass-card text-slate-300 hover:text-white'
+          }`}
+        >
+          {isAr ? 'الكل' : 'All'}
+        </button>
+        {visibleXtreamCategories.map((cat) => {
+          const active = xtreamCatFilter === cat.category_id;
           return (
             <button
-              key={cat.id}
+              key={cat.category_id}
               type="button"
               onClick={() => {
-                setCategory(cat.id);
+                setXtreamCatFilter(cat.category_id);
                 if (listRef.current) listRef.current.scrollTop = 0;
               }}
-              className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 active
                   ? 'neon-gradient text-white shadow-[0_4px_14px_rgba(0,229,255,0.28)]'
                   : 'glass-card text-slate-300 hover:text-white'
               }`}
             >
-              {isAr ? cat.ar : cat.en}
+              {cat.category_name}
             </button>
           );
         })}
@@ -416,6 +507,18 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
       {/* الفلاتر المتقدمة */}
       {showFilters && (
         <div className="glass-card rounded-2xl p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 shrink-0 text-xs">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as CategoryId)}
+            className="bg-[#090C16]/80 border border-white/10 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-[#00E5FF]"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {isAr ? c.ar : c.en}
+              </option>
+            ))}
+          </select>
+
           <select
             value={countryFilter}
             onChange={(e) => setCountryFilter(e.target.value)}
@@ -486,8 +589,8 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
             <span>
               {sortBy === 'default'
                 ? isAr
-                  ? 'ترتيب: عربي أولاً'
-                  : 'Sort: Arabic First'
+                  ? 'ترتيب افتراضي'
+                  : 'Default Sort'
                 : sortBy === 'name'
                   ? isAr
                     ? 'الترتيب: الاسم'
@@ -505,13 +608,13 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
           <button
             type="button"
             onClick={onToggleHideOffline}
-            className={`rounded-xl px-2.5 py-2 border font-bold cursor-pointer transition-colors ${
+            className={`col-span-2 sm:col-span-3 md:col-span-6 rounded-xl px-2.5 py-2 border font-bold cursor-pointer transition-colors ${
               settings.hideOffline
                 ? 'bg-[#00E5FF]/20 border-[#00E5FF] text-[#00E5FF]'
                 : 'bg-[#090C16]/80 border-white/10 text-slate-300'
             }`}
           >
-            {isAr ? 'إخفاء الميتة' : 'Hide Dead'}
+            {isAr ? 'إخفاء القنوات الميتة' : 'Hide Dead Channels'}
           </button>
         </div>
       )}
@@ -523,11 +626,35 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
         className="flex-1 overflow-y-auto no-scrollbar pb-24"
       >
         {filtered.length === 0 ? (
-          <div className="glass-card rounded-3xl p-8 text-center space-y-2 mt-4">
-            <Tv className="w-10 h-10 text-slate-500 mx-auto" />
+          <div className="glass-card rounded-3xl p-8 text-center space-y-3 mt-4">
+            {isFetching ? (
+              <Loader2 className="w-10 h-10 text-[#00E5FF] mx-auto animate-spin" />
+            ) : (
+              <Tv className="w-10 h-10 text-slate-500 mx-auto" />
+            )}
             <p className="text-sm font-bold text-slate-300">
-              {isAr ? 'لا توجد قنوات مطابقة لبحثك' : 'No matching channels found'}
+              {isFetching
+                ? isAr
+                  ? 'جاري مزامنة السيرفر وجلب القنوات...'
+                  : 'Syncing server channels...'
+                : channels.length === 0
+                  ? isAr
+                    ? 'لم يتم تحميل قنوات من السيرفر بعد'
+                    : 'No channels loaded from server yet'
+                  : isAr
+                    ? 'لا توجد قنوات مطابقة لبحثك'
+                    : 'No matching channels found'}
             </p>
+            {!isFetching && channels.length === 0 && onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                className="neon-gradient min-h-[40px] px-4 py-2 rounded-xl text-xs font-extrabold text-white inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isAr ? 'إعادة مزامنة السيرفر' : 'Retry Sync'}</span>
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
@@ -556,6 +683,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
                     onPointerMove={cancelLongPress}
                     onContextMenu={(e) => {
                       e.preventDefault();
+                      setCopiedDetailUrl(false);
                       setDetailChannel(ch);
                     }}
                     onClick={() => {
@@ -755,7 +883,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
                   setDetailChannel(null);
                   onPlay(ch);
                 }}
-                className="neon-gradient py-2.5 rounded-2xl text-white font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="neon-gradient min-h-[44px] py-2.5 rounded-2xl text-white font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>{isAr ? 'تشغيل القناة' : 'Play Channel'}</span>
@@ -768,7 +896,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
                   setDetailChannel(null);
                   onCheckSingleChannel(ch);
                 }}
-                className="glass-card py-2.5 rounded-2xl text-[#00E5FF] font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="glass-card min-h-[44px] py-2.5 rounded-2xl text-[#00E5FF] font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>{isAr ? 'فحص الآن' : 'Check Now'}</span>
@@ -777,7 +905,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleFavorite(detailChannel.id)}
-                className="glass-card py-2.5 rounded-2xl text-slate-200 font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="glass-card min-h-[44px] py-2.5 rounded-2xl text-slate-200 font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Heart
                   className={`w-4 h-4 ${
@@ -787,18 +915,56 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
                 <span>{isAr ? 'المفضلة' : 'Favorite'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const ch = detailChannel;
-                  setDetailChannel(null);
-                  onDeleteChannel(ch);
-                }}
-                className="py-2.5 rounded-2xl bg-[#FF3B5C] text-white font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{isAr ? 'حذف القناة' : 'Delete Channel'}</span>
-              </button>
+              {settings.showCopyButton ? (
+                <button
+                  type="button"
+                  onClick={() => handleCopyDetailUrl(detailChannel.url)}
+                  className="glass-card min-h-[44px] py-2.5 rounded-2xl text-slate-200 hover:text-[#00E5FF] font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {copiedDetailUrl ? (
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  <span>
+                    {copiedDetailUrl
+                      ? isAr
+                        ? 'تم النسخ'
+                        : 'Copied'
+                      : isAr
+                        ? 'نسخ الرابط'
+                        : 'Copy URL'}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ch = detailChannel;
+                    setDetailChannel(null);
+                    onDeleteChannel(ch);
+                  }}
+                  className="min-h-[44px] py-2.5 rounded-2xl bg-[#FF3B5C] text-white font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isAr ? 'حذف القناة' : 'Delete Channel'}</span>
+                </button>
+              )}
+
+              {settings.showCopyButton && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ch = detailChannel;
+                    setDetailChannel(null);
+                    onDeleteChannel(ch);
+                  }}
+                  className="col-span-2 min-h-[44px] py-2.5 rounded-2xl bg-[#FF3B5C] text-white font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isAr ? 'حذف القناة' : 'Delete Channel'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -4,6 +4,9 @@ import {
   CACHE_MAX_AGE_MS,
   DEFAULT_SETTINGS,
   DEFAULT_SOURCES,
+  DEFAULT_TELEGRAM_LINKS,
+  DEFAULT_XTREAM_CATEGORIES,
+  DEFAULT_XTREAM_SOURCES,
   HEALTH_CACHE_AGE_MS,
   ONE_HOUR_MS,
 } from './constants/sources';
@@ -18,6 +21,9 @@ import {
   M3USource,
   SourceFetchStats,
   TabId,
+  XtreamCategory,
+  XtreamSource,
+  XtreamUserInfo,
 } from './types/iptv';
 import {
   clearAllCache,
@@ -29,6 +35,9 @@ import {
   loadPinned,
   loadSettings,
   loadSources,
+  loadXtreamCategories,
+  loadXtreamSources,
+  migrateOldSourcesIfNeeded,
   saveBlacklist,
   saveChannelsCache,
   saveDeletedLog,
@@ -37,6 +46,8 @@ import {
   savePinned,
   saveSettings,
   saveSources,
+  saveXtreamCategories,
+  saveXtreamSources,
   updateChannelHealthInDB,
 } from './utils/db';
 import { mergeAndDeduplicateChannels, parseM3UInWorker } from './utils/m3uWorker';
@@ -48,13 +59,16 @@ import {
   isWifiAllowedForAutoScan,
   runHealthCheckPool,
 } from './utils/streamHealth';
+import { fetchXtreamSourceData } from './utils/xtream';
 import { BottomNav } from './components/BottomNav';
 import { HomeView } from './components/HomeView';
 import { ChannelsView } from './components/ChannelsView';
 import { FavoritesView } from './components/FavoritesView';
+import { TelegramView } from './components/TelegramView';
 import { SettingsView } from './components/SettingsView';
 import { ProPlayerModal } from './components/ProPlayerModal';
 import { HealthScanModal } from './components/HealthScanModal';
+import { AdminPanelModal } from './components/AdminPanelModal';
 
 const INITIAL_SCAN: HealthScanProgress = {
   active: false,
@@ -75,9 +89,13 @@ const INITIAL_SCAN: HealthScanProgress = {
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [channelsCategoryJump, setChannelsCategoryJump] = useState<CategoryId>('all');
+  const [channelsXtreamCatJump, setChannelsXtreamCatJump] = useState<string>('all');
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [sources, setSources] = useState<M3USource[]>(DEFAULT_SOURCES);
+  const [xtreamSources, setXtreamSources] = useState<XtreamSource[]>(DEFAULT_XTREAM_SOURCES);
+  const [xtreamCategories, setXtreamCategories] = useState<XtreamCategory[]>([]);
+  const [xtreamUserInfo, setXtreamUserInfo] = useState<XtreamUserInfo | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [favGroups, setFavGroups] = useState<FavoriteGroup[]>([
     { id: 'grp_all', name: 'المفضلة العامة', channelIds: [] },
@@ -91,7 +109,7 @@ export default function App() {
   const [stats, setStats] = useState<SourceFetchStats>({
     totalLoaded: 0,
     completedSources: 0,
-    totalSources: DEFAULT_SOURCES.length,
+    totalSources: DEFAULT_XTREAM_SOURCES.length,
     usingCache: false,
     corsFallbackUsed: false,
     lastUpdated: null,
@@ -99,10 +117,13 @@ export default function App() {
 
   const [playerChannel, setPlayerChannel] = useState<Channel | null>(null);
   const [playerMinimized, setPlayerMinimized] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const [scan, setScan] = useState<HealthScanProgress>(INITIAL_SCAN);
   const scanAbortRef = useRef<AbortController | null>(null);
   const scanPausedRef = useRef(false);
+  const syncRunIdRef = useRef(0);
+  const syncAbortRef = useRef<AbortController | null>(null);
 
   const [globalToast, setGlobalToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
@@ -146,6 +167,11 @@ export default function App() {
     settingsRef.current = settings;
   }, [settings]);
 
+  const xtreamSourcesRef = useRef<XtreamSource[]>(xtreamSources);
+  useEffect(() => {
+    xtreamSourcesRef.current = xtreamSources;
+  }, [xtreamSources]);
+
   const showToast = useCallback((msg: string) => {
     setGlobalToast(msg);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -186,6 +212,17 @@ export default function App() {
     }
     return set;
   }, [favGroups]);
+
+  // إخفاء القنوات التابعة لأقسام مخفية من لوحة التحكم
+  const visibleChannels = useMemo(() => {
+    if (!settings.hiddenCategoryIds || settings.hiddenCategoryIds.length === 0) {
+      return channels;
+    }
+    const hiddenSet = new Set(settings.hiddenCategoryIds);
+    return channels.filter(
+      (c) => !c.xtreamCategoryId || !hiddenSet.has(c.xtreamCategoryId)
+    );
+  }, [channels, settings.hiddenCategoryIds]);
 
   // تصفية القنوات حسب القائمة السوداء مع إبقاء القنوات التي لديها رابط بديل سليم
   const filterAgainstBlacklist = useCallback((list: Channel[], bl: string[]): Channel[] => {
@@ -286,12 +323,10 @@ export default function App() {
       if (scanAbortRef.current) return;
       const s = settingsRef.current;
 
-      // لا يبدأ الفحص التلقائي في الخلفية إلا عند اتصال واي فاي إذا كان توفير البيانات مفعلاً
       if (backgroundAuto && !isWifiAllowedForAutoScan(s.dataSaver)) {
         return;
       }
 
-      // التحقق من اتصال الإنترنت قبل الفحص
       const onlineNow = await checkInternetConnected();
       if (!onlineNow) {
         if (!backgroundAuto) {
@@ -332,7 +367,6 @@ export default function App() {
         return;
       }
 
-      // ترتيب الأولوية: الظاهرة على الشاشة أولاً ثم المفضلة ثم الباقي
       const visibleIds = new Set(priorityVisible.map((c) => c.id));
       const ordered = [...targets].sort((a, b) => {
         const aScore = (visibleIds.has(a.id) ? 2 : 0) + (favoriteIds.has(a.id) ? 1 : 0);
@@ -440,7 +474,6 @@ export default function App() {
       await saveChannelsCache(channelsRef.current, stats.lastUpdated || Date.now());
       updateSettings({ lastHealthCheckAt: Date.now() });
 
-      // التحقق من القنوات التي فشلت في فحصين متتاليين (غير المؤكدة لا تُحذف أبداً)
       if (!controller.signal.aborted) {
         const twoFailDead = channelsRef.current.filter(
           (c) => c.health === 'dead' && (c.consecutiveScanFails || 0) >= 2
@@ -486,24 +519,39 @@ export default function App() {
     [favoriteIds, stats.lastUpdated, updateSettings, performBulkDelete, showToast]
   );
 
-  // جلب ودمج المصادر تدريجياً بالتوازي + فحص تلقائي بعد كل تحديث للمصادر
+  // مزامنة السيرفر الرئيسي المستخرج (Xtream API) + أي مصادر M3U إضافية يضيفها المستخدم
   const syncAllSources = useCallback(
     async (
-      targetSources: M3USource[],
+      targetXtreamSources: XtreamSource[],
+      activeXtreamId: string,
+      targetM3USources: M3USource[],
       activeProxy: string,
       hasCachedData: boolean,
-      overrideBlacklist?: string[]
+      overrideBlacklist?: string[],
+      allowFallbackServers = false
     ) => {
-      const enabledSources = targetSources.filter((s) => s.enabled);
-      if (enabledSources.length === 0) return;
+      const enabledM3U = targetM3USources.filter((s) => s.enabled);
+      const activeXtream =
+        targetXtreamSources.find((s) => s.id === activeXtreamId && s.enabled) ||
+        targetXtreamSources.find((s) => s.enabled) ||
+        targetXtreamSources[0];
+
+      const totalSteps = (activeXtream ? 1 : 0) + enabledM3U.length;
+      if (totalSteps === 0) return;
+
+      const runId = ++syncRunIdRef.current;
+      syncAbortRef.current?.abort();
+      const syncController = new AbortController();
+      syncAbortRef.current = syncController;
 
       setIsFetching(true);
       setStats((prev) => ({
         ...prev,
         completedSources: 0,
-        totalSources: enabledSources.length,
+        totalSources: totalSteps,
         corsFallbackUsed: false,
         notice: undefined,
+        error: undefined,
       }));
 
       setSources((prev) =>
@@ -514,62 +562,155 @@ export default function App() {
       let completed = 0;
       let anySucceeded = false;
       let usedProxyAny = false;
+      let lastErrorMsg: string | undefined;
       const activeBl = overrideBlacklist ?? blacklistRef.current;
 
-      await Promise.allSettled(
-        enabledSources.map(async (src) => {
+      // 1. جلب السيرفر الرئيسي المستخرج (Xtream) مع تجربة البديل تلقائياً عند التهيئة فقط
+      if (activeXtream && activeXtream.server && activeXtream.username && activeXtream.password) {
+        const candidates = allowFallbackServers
+          ? [
+              activeXtream,
+              ...targetXtreamSources.filter(
+                (s) => s.id !== activeXtream.id && s.enabled && s.server && s.username && s.password
+              ),
+            ]
+          : [activeXtream];
+
+        let syncedAnyServer = false;
+        for (const candidate of candidates) {
+          if (runId !== syncRunIdRef.current || syncController.signal.aborted) return;
+
+          setXtreamSources((prev) =>
+            prev.map((s) => (s.id === candidate.id ? { ...s, status: 'loading', lastError: undefined } : s))
+          );
+
           try {
-            const { text, usedProxy } = await fetchM3UText(src.url, activeProxy);
-            if (usedProxy) usedProxyAny = true;
+            const res = await fetchXtreamSourceData(candidate, activeProxy, syncController.signal);
+            if (runId !== syncRunIdRef.current || syncController.signal.aborted) return;
+            if (res.channels.length === 0) {
+              throw new Error('لم يتم العثور على قنوات في هذا السيرفر');
+            }
 
-            const parsed = await parseM3UInWorker(text, src.id, src.name);
-            anySucceeded = true;
+            if (candidate.id !== activeXtreamId) {
+              updateSettings({ activeXtreamSourceId: candidate.id });
+            }
 
-            workingChannels = mergeAndDeduplicateChannels(workingChannels, parsed);
+            if (res.usedProxy) usedProxyAny = true;
+            if (res.userInfo) setXtreamUserInfo(res.userInfo);
+
+            const catsToStore =
+              res.categories.length > 0
+                ? res.categories
+                : candidate.allowedCategoryIds?.length
+                  ? DEFAULT_XTREAM_CATEGORIES
+                  : [];
+            setXtreamCategories(catsToStore);
+            await saveXtreamCategories(catsToStore);
+
+            workingChannels = mergeAndDeduplicateChannels(workingChannels, res.channels);
             const cleaned = filterAgainstBlacklist(workingChannels, activeBl);
             setChannels(cleaned);
+            anySucceeded = true;
+            syncedAnyServer = true;
+            lastErrorMsg = undefined;
 
-            setSources((prev) =>
-              prev.map((item) =>
-                item.id === src.id
-                  ? { ...item, status: 'success', channelCount: parsed.length }
-                  : item
-              )
-            );
-          } catch {
-            setSources((prev) =>
-              prev.map((item) =>
-                item.id === src.id ? { ...item, status: 'error', channelCount: 0 } : item
-              )
-            );
-          } finally {
-            completed++;
-            setStats((prev) => ({
-              ...prev,
-              completedSources: completed,
-              totalLoaded: workingChannels.length,
-              corsFallbackUsed: usedProxyAny,
-            }));
+            setXtreamSources((prev) => {
+              const next = prev.map((s) =>
+                s.id === candidate.id
+                  ? { ...s, status: 'success' as const, channelCount: res.channels.length, lastError: undefined }
+                  : s
+              );
+              saveXtreamSources(next);
+              return next;
+            });
+            break;
+          } catch (err) {
+            if (runId !== syncRunIdRef.current || syncController.signal.aborted) return;
+            lastErrorMsg = err instanceof Error ? err.message : 'Server sync failed';
+            setXtreamSources((prev) => {
+              const next = prev.map((s) =>
+                s.id === candidate.id
+                  ? { ...s, status: 'error' as const, channelCount: 0, lastError: lastErrorMsg }
+                  : s
+              );
+              saveXtreamSources(next);
+              return next;
+            });
           }
-        })
-      );
+        }
+
+        if (runId === syncRunIdRef.current && !syncController.signal.aborted) {
+          completed++;
+          setStats((prev) => ({
+            ...prev,
+            completedSources: completed,
+            totalLoaded: workingChannels.length,
+            corsFallbackUsed: usedProxyAny,
+            error: syncedAnyServer ? undefined : lastErrorMsg,
+          }));
+        }
+      }
+
+      // 2. جلب أي مصادر M3U إضافية أضافها المستخدم يدوياً (لا توجد مصادر قديمة افتراضياً)
+      if (enabledM3U.length > 0) {
+        await Promise.allSettled(
+          enabledM3U.map(async (src) => {
+            try {
+              const { text, usedProxy } = await fetchM3UText(src.url, activeProxy);
+              if (usedProxy) usedProxyAny = true;
+
+              const parsed = await parseM3UInWorker(text, src.id, src.name);
+              anySucceeded = true;
+
+              workingChannels = mergeAndDeduplicateChannels(workingChannels, parsed);
+              const cleaned = filterAgainstBlacklist(workingChannels, activeBl);
+              setChannels(cleaned);
+
+              setSources((prev) =>
+                prev.map((item) =>
+                  item.id === src.id
+                    ? { ...item, status: 'success', channelCount: parsed.length }
+                    : item
+                )
+              );
+            } catch {
+              setSources((prev) =>
+                prev.map((item) =>
+                  item.id === src.id ? { ...item, status: 'error', channelCount: 0 } : item
+                )
+              );
+            } finally {
+              completed++;
+              setStats((prev) => ({
+                ...prev,
+                completedSources: completed,
+                totalLoaded: workingChannels.length,
+                corsFallbackUsed: usedProxyAny,
+              }));
+            }
+          })
+        );
+      }
+
+      if (runId !== syncRunIdRef.current || syncController.signal.aborted) return;
 
       const finalClean = filterAgainstBlacklist(workingChannels, activeBl);
       const now = Date.now();
       if (anySucceeded && finalClean.length > 0) {
         await saveChannelsCache(finalClean, now);
+        if (runId !== syncRunIdRef.current) return;
         setStats((prev) => ({
           ...prev,
           lastUpdated: now,
           usingCache: false,
+          error: undefined,
           notice: usedProxyAny
             ? settingsRef.current.language === 'ar'
-              ? 'تم الجلب بنجاح عبر وسيط CORS البديل'
-              : 'Synced via CORS fallback proxy'
+              ? 'تمت مزامنة السيرفر بنجاح عبر الوسيط'
+              : 'Synced via CORS proxy'
             : undefined,
         }));
 
-        // فحص تلقائي في الخلفية بعد كل تحديث للمصادر (إذا كان الفحص التلقائي غير معطّل ومسموح على الواي فاي)
         if (
           settingsRef.current.autoScanIntervalHours > 0 &&
           isWifiAllowedForAutoScan(settingsRef.current.dataSaver)
@@ -580,25 +721,41 @@ export default function App() {
         setStats((prev) => ({
           ...prev,
           usingCache: true,
+          error: lastErrorMsg,
           notice:
             settingsRef.current.language === 'ar'
-              ? 'تعذر الاتصال المباشر بالمصادر، يتم عرض آخر نسخة محفوظة.'
-              : 'Could not reach sources; displaying last cached snapshot.',
+              ? 'تعذر الاتصال المباشر بالسيرفر، يتم عرض آخر نسخة محفوظة.'
+              : 'Could not reach server; displaying last cached snapshot.',
+        }));
+      } else if (lastErrorMsg) {
+        setStats((prev) => ({
+          ...prev,
+          error: lastErrorMsg,
+          notice:
+            settingsRef.current.language === 'ar'
+              ? 'تعذر الاتصال بالسيرفر حالياً — اضغط إعادة المحاولة أو اختر سيرفراً آخر.'
+              : 'Could not reach server — tap Retry or switch server.',
         }));
       }
 
-      setIsFetching(false);
+      if (runId === syncRunIdRef.current) {
+        setIsFetching(false);
+      }
     },
-    [filterAgainstBlacklist, startHealthScan]
+    [filterAgainstBlacklist, startHealthScan, updateSettings]
   );
 
-  // التهيئة الأولية: stale-while-revalidate من IndexedDB + الفحص التلقائي الدوري
+  // التهيئة الأولية: تنظيف أي مصادر قديمة أولاً ثم التحميل والمزامنة
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const migrated = await migrateOldSourcesIfNeeded(DEFAULT_SETTINGS);
+
       const [
         loadedSettings,
         loadedSources,
+        loadedXtreamSources,
+        loadedXtreamCategories,
         loadedFavs,
         loadedPinned,
         loadedHistory,
@@ -608,6 +765,8 @@ export default function App() {
       ] = await Promise.all([
         loadSettings(DEFAULT_SETTINGS),
         loadSources(DEFAULT_SOURCES),
+        loadXtreamSources(DEFAULT_XTREAM_SOURCES),
+        loadXtreamCategories(DEFAULT_XTREAM_CATEGORIES),
         loadFavorites(),
         loadPinned(),
         loadHistory(),
@@ -617,16 +776,53 @@ export default function App() {
       ]);
 
       if (!mounted) return;
-      const mergedSettings = { ...DEFAULT_SETTINGS, ...loadedSettings };
+
+      const mergedSettings: AppSettings = {
+        ...DEFAULT_SETTINGS,
+        ...loadedSettings,
+        adminPin: loadedSettings.adminPin || DEFAULT_SETTINGS.adminPin,
+        devName: loadedSettings.devName || DEFAULT_SETTINGS.devName,
+        devUrl: loadedSettings.devUrl || DEFAULT_SETTINGS.devUrl,
+        telegramLinks:
+          loadedSettings.telegramLinks && loadedSettings.telegramLinks.length > 0
+            ? loadedSettings.telegramLinks
+            : DEFAULT_TELEGRAM_LINKS,
+        hiddenCategoryIds: loadedSettings.hiddenCategoryIds || [],
+      };
+
+      const activeXtreamList =
+        loadedXtreamSources && loadedXtreamSources.length > 0
+          ? loadedXtreamSources
+          : DEFAULT_XTREAM_SOURCES;
+      const validActiveId = activeXtreamList.some(
+        (s) => s.id === mergedSettings.activeXtreamSourceId
+      )
+        ? mergedSettings.activeXtreamSourceId
+        : activeXtreamList[0].id;
+      if (validActiveId !== mergedSettings.activeXtreamSourceId) {
+        mergedSettings.activeXtreamSourceId = validActiveId;
+      }
+
+      const activeCats =
+        loadedXtreamCategories && loadedXtreamCategories.length > 0
+          ? loadedXtreamCategories
+          : validActiveId === 'xtream_server_3'
+            ? DEFAULT_XTREAM_CATEGORIES
+            : [];
+
       setSettings(mergedSettings);
       setSources(loadedSources);
+      setXtreamSources(activeXtreamList);
+      setXtreamCategories(activeCats);
       setFavGroups(loadedFavs);
       setPinnedIds(loadedPinned);
       setHistory(loadedHistory);
       setBlacklist(loadedBlacklist);
       setDeletedLog(loadedLog);
 
-      const filteredCached = filterAgainstBlacklist(cache.channels, loadedBlacklist);
+      const filteredCached = migrated
+        ? []
+        : filterAgainstBlacklist(cache.channels, loadedBlacklist);
       const hasCached = filteredCached.length > 0;
       if (hasCached) {
         setChannels(filteredCached);
@@ -639,14 +835,19 @@ export default function App() {
       }
 
       const isStale =
-        !cache.lastUpdated || Date.now() - cache.lastUpdated > CACHE_MAX_AGE_MS;
+        migrated ||
+        !cache.lastUpdated ||
+        Date.now() - cache.lastUpdated > CACHE_MAX_AGE_MS;
 
       if (!hasCached || isStale) {
         await syncAllSources(
+          activeXtreamList,
+          mergedSettings.activeXtreamSourceId,
           loadedSources,
           mergedSettings.corsProxy,
           hasCached,
-          loadedBlacklist
+          loadedBlacklist,
+          !hasCached
         );
       } else if (
         mergedSettings.autoScanIntervalHours > 0 &&
@@ -665,15 +866,21 @@ export default function App() {
     };
   }, [syncAllSources, filterAgainstBlacklist, startHealthScan]);
 
-  // تحديث المصادر تلقائياً كل 12 ساعة
+  // تحديث تلقائي كل 12 ساعة
   useEffect(() => {
     const id = window.setInterval(() => {
-      syncAllSources(sources, settings.corsProxy, channelsRef.current.length > 0);
+      syncAllSources(
+        xtreamSourcesRef.current,
+        settings.activeXtreamSourceId,
+        sources,
+        settings.corsProxy,
+        channelsRef.current.length > 0
+      );
     }, CACHE_MAX_AGE_MS);
     return () => window.clearInterval(id);
-  }, [sources, settings.corsProxy, syncAllSources]);
+  }, [sources, settings.activeXtreamSourceId, settings.corsProxy, syncAllSources]);
 
-  // مؤقت الفحص الدوري التلقائي في الخلفية (6 / 12 / 24 ساعة)
+  // مؤقت الفحص الدوري التلقائي في الخلفية
   useEffect(() => {
     if (!settings.autoScanIntervalHours) return;
     const ms = settings.autoScanIntervalHours * ONE_HOUR_MS;
@@ -689,7 +896,6 @@ export default function App() {
     saveSources(sources);
   }, [sources]);
 
-  // نجاح تشغيل القناة يصفّر عداد فشلها
   const handlePlaybackSuccess = useCallback((channelId: string) => {
     let updatedChannel: Channel | null = null;
     setChannels((prev) =>
@@ -711,7 +917,6 @@ export default function App() {
     }
   }, []);
 
-  // الانتقال للقناة التالية بعد الفشل
   const skipToNextFrom = useCallback((failedChannelId: string) => {
     const list = channelsRef.current;
     const idx = list.findIndex((c) => c.id === failedChannelId);
@@ -723,7 +928,6 @@ export default function App() {
     }
   }, []);
 
-  // عند فشل كل محاولات تشغيل القناة (الروابط البديلة + إعادة محاولة واحدة)
   const handlePlaybackAllFailed = useCallback(
     async (ch: Channel, reason: string) => {
       const isAr = settingsRef.current.language === 'ar';
@@ -759,7 +963,6 @@ export default function App() {
         await updateChannelHealthInDB(updated);
       }
 
-      // تخطي القناة تلقائياً إلى التالية مع الإشعار المطلوب
       skipToNextFrom(ch.id);
       showToast(
         isAr
@@ -767,7 +970,6 @@ export default function App() {
           : 'Playback failed, channel skipped'
       );
 
-      // حذف تلقائي عند الوصول إلى 3 مرات فشل في أوقات مختلفة (بفاصل ساعة)
       if (nextFailCount >= 3) {
         if (settingsRef.current.autoDeleteDead) {
           await performBulkDelete(
@@ -797,7 +999,6 @@ export default function App() {
     [performBulkDelete, showToast, skipToNextFrom]
   );
 
-  // زر "بلّغ أنها لا تعمل" في المشغل: فحص فوري وحذف إذا فشلت
   const handleReportNotWorking = useCallback(
     async (ch: Channel) => {
       const isAr = settingsRef.current.language === 'ar';
@@ -851,7 +1052,6 @@ export default function App() {
     [performBulkDelete, showToast, skipToNextFrom]
   );
 
-  // حذف قناة واحدة يدوياً
   const handleDeleteSingleChannel = useCallback(
     async (ch: Channel) => {
       const isAr = settingsRef.current.language === 'ar';
@@ -866,7 +1066,6 @@ export default function App() {
     [playerChannel, performBulkDelete, skipToNextFrom]
   );
 
-  // حذف مجموعة محددة يدوياً
   const handleDeleteMultiChannels = useCallback(
     async (ids: string[]) => {
       const isAr = settingsRef.current.language === 'ar';
@@ -879,7 +1078,6 @@ export default function App() {
     [performBulkDelete]
   );
 
-  // فحص قناة واحدة من قائمة السياق بالضغط المطول
   const handleCheckSingleChannel = useCallback(
     async (ch: Channel) => {
       const isAr = settingsRef.current.language === 'ar';
@@ -969,6 +1167,28 @@ export default function App() {
     [updateSettings]
   );
 
+  const handleSelectXtreamSource = useCallback(
+    (sourceId: string) => {
+      if (sourceId === settingsRef.current.activeXtreamSourceId && channelsRef.current.length > 0) {
+        return;
+      }
+      updateSettings({ activeXtreamSourceId: sourceId });
+      setChannels([]);
+      setXtreamUserInfo(null);
+      setChannelsXtreamCatJump('all');
+      const target = xtreamSourcesRef.current.find((s) => s.id === sourceId);
+      setXtreamCategories(target?.allowedCategoryIds?.length ? DEFAULT_XTREAM_CATEGORIES : []);
+      syncAllSources(
+        xtreamSourcesRef.current,
+        sourceId,
+        sources,
+        settingsRef.current.corsProxy,
+        false
+      );
+    },
+    [sources, syncAllSources, updateSettings]
+  );
+
   const handleAddSourceUrl = useCallback(
     (name: string, url: string) => {
       const newSource: M3USource = {
@@ -982,9 +1202,15 @@ export default function App() {
       };
       const nextSources = [newSource, ...sources];
       setSources(nextSources);
-      syncAllSources(nextSources, settings.corsProxy, channelsRef.current.length > 0);
+      syncAllSources(
+        xtreamSourcesRef.current,
+        settings.activeXtreamSourceId,
+        nextSources,
+        settings.corsProxy,
+        channelsRef.current.length > 0
+      );
     },
-    [sources, settings.corsProxy, syncAllSources]
+    [sources, settings.activeXtreamSourceId, settings.corsProxy, syncAllSources]
   );
 
   const handleUploadSourceFile = useCallback(
@@ -1020,12 +1246,12 @@ export default function App() {
 
   const historyIds = useMemo(() => history.map((h) => h.channelId), [history]);
   const totalDeadInLibrary = useMemo(
-    () => channels.filter((c) => c.health === 'dead').length,
-    [channels]
+    () => visibleChannels.filter((c) => c.health === 'dead').length,
+    [visibleChannels]
   );
   const totalOnlineInLibrary = useMemo(
-    () => channels.filter((c) => c.health === 'online').length,
-    [channels]
+    () => visibleChannels.filter((c) => c.health === 'online').length,
+    [visibleChannels]
   );
 
   // شاشة القفل العائلي PIN
@@ -1037,7 +1263,9 @@ export default function App() {
             <Lock className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white">IPTV PRO</h1>
+            <h1 className="text-xl font-extrabold text-white">
+              {settings.appName || 'IPTV PRO'}
+            </h1>
             <p className="text-xs text-slate-400 mt-1">
               {settings.language === 'ar'
                 ? 'أدخل رمز القفل العائلي للمتابعة'
@@ -1155,7 +1383,9 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto px-4">
         {activeTab === 'home' && (
           <HomeView
-            channels={channels}
+            channels={visibleChannels}
+            xtreamSources={xtreamSources}
+            xtreamCategories={xtreamCategories}
             historyIds={historyIds}
             favoriteIds={favoriteIds}
             currentChannelId={playerChannel?.id || null}
@@ -1165,10 +1395,19 @@ export default function App() {
             onPlay={handlePlayChannel}
             onToggleFavorite={handleToggleFavorite}
             onRefresh={() =>
-              syncAllSources(sources, settings.corsProxy, channels.length > 0)
+              syncAllSources(
+                xtreamSources,
+                settings.activeXtreamSourceId,
+                sources,
+                settings.corsProxy,
+                channels.length > 0
+              )
             }
-            onGoToChannels={(cat) => {
+            onSelectXtreamSource={handleSelectXtreamSource}
+            onOpenAdmin={() => setAdminOpen(true)}
+            onGoToChannels={(cat, xtCatId) => {
               if (cat) setChannelsCategoryJump(cat);
+              if (xtCatId !== undefined) setChannelsXtreamCatJump(xtCatId);
               setActiveTab('channels');
             }}
           />
@@ -1176,14 +1415,28 @@ export default function App() {
 
         {activeTab === 'channels' && (
           <ChannelsView
-            channels={channels}
+            channels={visibleChannels}
+            xtreamSources={xtreamSources}
+            xtreamCategories={xtreamCategories}
             favoriteIds={favoriteIds}
             currentChannelId={playerChannel?.id || null}
             settings={settings}
             initialCategory={channelsCategoryJump}
+            initialXtreamCategory={channelsXtreamCatJump}
+            isFetching={isFetching}
             isCheckingHealth={scan.active}
             onPlay={handlePlayChannel}
             onToggleFavorite={handleToggleFavorite}
+            onSelectXtreamSource={handleSelectXtreamSource}
+            onRefresh={() =>
+              syncAllSources(
+                xtreamSources,
+                settings.activeXtreamSourceId,
+                sources,
+                settings.corsProxy,
+                channels.length > 0
+              )
+            }
             onStartHealthScan={(mode, visible) => startHealthScan(mode, visible)}
             onOpenScanProgress={() => setScan((s) => ({ ...s, minimized: false }))}
             onToggleHideOffline={() =>
@@ -1200,7 +1453,7 @@ export default function App() {
 
         {activeTab === 'favorites' && (
           <FavoritesView
-            channels={channels}
+            channels={visibleChannels}
             groups={favGroups}
             pinnedIds={pinnedIds}
             history={history}
@@ -1274,16 +1527,21 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'telegram' && <TelegramView settings={settings} />}
+
         {activeTab === 'settings' && (
           <SettingsView
             settings={settings}
             sources={sources}
+            xtreamSources={xtreamSources}
             stats={stats}
-            totalChannels={channels.length}
+            totalChannels={visibleChannels.length}
             blacklistCount={blacklist.length}
             deletedLog={deletedLog}
             isFetching={isFetching}
             isCheckingHealth={scan.active}
+            onOpenAdmin={() => setAdminOpen(true)}
+            onSelectXtreamSource={handleSelectXtreamSource}
             onUpdateSettings={updateSettings}
             onToggleSource={(id) => {
               setSources((prev) =>
@@ -1296,7 +1554,13 @@ export default function App() {
             onAddSourceUrl={handleAddSourceUrl}
             onUploadSourceFile={handleUploadSourceFile}
             onRefreshSources={() =>
-              syncAllSources(sources, settings.corsProxy, channels.length > 0)
+              syncAllSources(
+                xtreamSources,
+                settings.activeXtreamSourceId,
+                sources,
+                settings.corsProxy,
+                channels.length > 0
+              )
             }
             onClearCache={async () => {
               await clearAllCache();
@@ -1304,7 +1568,7 @@ export default function App() {
               setStats({
                 totalLoaded: 0,
                 completedSources: 0,
-                totalSources: sources.length,
+                totalSources: xtreamSources.length + sources.length,
                 usingCache: false,
                 corsFallbackUsed: false,
                 lastUpdated: null,
@@ -1314,7 +1578,14 @@ export default function App() {
             onClearBlacklistAndRestore={async () => {
               setBlacklist([]);
               await saveBlacklist([]);
-              syncAllSources(sources, settings.corsProxy, false, []);
+              syncAllSources(
+                xtreamSources,
+                settings.activeXtreamSourceId,
+                sources,
+                settings.corsProxy,
+                false,
+                []
+              );
             }}
             onClearDeletedLog={async () => {
               setDeletedLog([]);
@@ -1330,6 +1601,80 @@ export default function App() {
         activeTab={activeTab}
         onChange={setActiveTab}
         lang={settings.language}
+      />
+
+      {/* لوحة التحكم المحمية بكلمة مرور */}
+      <AdminPanelModal
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        settings={settings}
+        xtreamSources={xtreamSources}
+        xtreamCategories={xtreamCategories}
+        userInfo={xtreamUserInfo}
+        totalChannels={visibleChannels.length}
+        favoritesCount={favoriteIds.size}
+        stats={stats}
+        isFetching={isFetching}
+        onSaveSettings={(patch) => {
+          updateSettings(patch);
+          showToast(
+            settings.language === 'ar'
+              ? 'تم حفظ إعدادات لوحة التحكم'
+              : 'Control panel settings saved'
+          );
+        }}
+        onSaveXtreamSources={(nextSources, activeId, forceReload) => {
+          setXtreamSources(nextSources);
+          saveXtreamSources(nextSources);
+          if (forceReload) {
+            syncAllSources(
+              nextSources,
+              activeId,
+              sources,
+              settingsRef.current.corsProxy,
+              channelsRef.current.length > 0
+            );
+          }
+        }}
+        onRefreshData={() =>
+          syncAllSources(
+            xtreamSourcesRef.current,
+            settingsRef.current.activeXtreamSourceId,
+            sources,
+            settingsRef.current.corsProxy,
+            channelsRef.current.length > 0
+          )
+        }
+        onTestFirstChannel={() => {
+          if (visibleChannels.length > 0) {
+            handlePlayChannel(visibleChannels[0]);
+          } else {
+            showToast(
+              settings.language === 'ar'
+                ? 'لا توجد قنوات متاحة للتجربة بعد'
+                : 'No channels available to test yet'
+            );
+          }
+        }}
+        onResetDefaults={() => {
+          updateSettings(DEFAULT_SETTINGS);
+          setXtreamSources(DEFAULT_XTREAM_SOURCES);
+          saveXtreamSources(DEFAULT_XTREAM_SOURCES);
+          setXtreamCategories(DEFAULT_XTREAM_CATEGORIES);
+          saveXtreamCategories(DEFAULT_XTREAM_CATEGORIES);
+          syncAllSources(
+            DEFAULT_XTREAM_SOURCES,
+            DEFAULT_SETTINGS.activeXtreamSourceId,
+            sources,
+            DEFAULT_SETTINGS.corsProxy,
+            false
+          );
+          showToast(
+            settings.language === 'ar'
+              ? 'تمت استعادة الإعدادات الافتراضية'
+              : 'Defaults restored'
+          );
+        }}
       />
 
       {/* نافذة/شريط تقدم فحص القنوات والملخص */}
@@ -1369,7 +1714,7 @@ export default function App() {
       {playerChannel && (
         <ProPlayerModal
           channel={playerChannel}
-          allChannels={channels}
+          allChannels={visibleChannels}
           isFavorite={favoriteIds.has(playerChannel.id)}
           settings={settings}
           minimized={playerMinimized}

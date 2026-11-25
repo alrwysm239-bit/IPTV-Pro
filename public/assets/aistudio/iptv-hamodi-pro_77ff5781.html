@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1214"><title>مركز القنوات</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js" defer></script>
+<style>
+:root{--bg:#0a1214;--s1:#111d20;--s2:#182a2e;--s3:#203538;--ln:rgba(255,255,255,.08);--tx:#eef3f2;--mu:#8fa3a1;--ac:#e8b04b;--ai:#1a1305;--soft:color-mix(in srgb,var(--ac) 14%,transparent);--ring:color-mix(in srgb,var(--ac) 45%,transparent);--bad:#ff6b6b;--ok:#5fd6a0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.6 'IBM Plex Sans Arabic',system-ui,sans-serif;padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+button,input{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.w{width:min(1120px,100% - 24px);margin-inline:auto}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--ln);padding-top:env(safe-area-inset-top,0px)}
+.top .w{display:flex;align-items:center;gap:10px;height:60px}
+.mark{width:34px;height:34px;border-radius:10px;background:var(--ac);display:grid;place-items:center;flex:none}
+.mark:after{content:"";width:12px;height:14px;background:var(--ai);clip-path:polygon(0 0,100% 50%,0 100%);transform:scaleX(-1)}
+.brand{font:700 19px 'Reem Kufi';white-space:nowrap}
+.sb{flex:1;max-width:400px;margin-inline-start:auto}
+input[type=search],.f input[type=text],.f input[type=password],.f input[type=url]{width:100%;height:40px;border-radius:12px;border:1px solid var(--ln);background:var(--s1);padding:0 13px;outline:none}
+input:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--soft)}
+.ib{width:40px;height:40px;border-radius:12px;background:var(--s1);border:1px solid var(--ln);display:grid;place-items:center;flex:none;font-size:17px}
+.nt{background:var(--soft);padding:7px 0;text-align:center;font-size:13px}.nt[hidden]{display:none}
+.hero{padding:22px 0 4px}.hero h1{font:700 clamp(26px,5.5vw,40px)/1.2 'Reem Kufi';margin:0 0 4px}.hero p{margin:0;color:var(--mu)}
+.pills{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:99px;background:var(--s1);border:1px solid var(--ln);font-size:12.5px;color:var(--mu)}.pill b{color:var(--tx);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mu)}.dot.ok{background:var(--ok)}.dot.er{background:var(--bad)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:16px 0 6px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 15px;border-radius:99px;background:var(--s1);border:1px solid var(--ln);font-size:13px;font-weight:500;color:var(--mu)}
+.chip.on{background:var(--ac);color:var(--ai);border-color:transparent;font-weight:600}
+.sh{display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px}.sh h2{font-size:16px;margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.grid.v{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.card{position:relative;text-align:right;border-radius:14px;background:var(--s1);border:1px solid var(--ln);overflow:hidden;display:block;width:100%;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--ring);transform:translateY(-2px)}
+.card .im{aspect-ratio:1;background:var(--s2);display:grid;place-items:center;color:var(--mu);font-size:26px}.v .card .im{aspect-ratio:2/3}
+.card img{width:100%;height:100%;object-fit:contain;padding:14px}.v .card img{object-fit:cover;padding:0}
+.card .nm{padding:8px 10px;font-size:12.5px;font-weight:500;line-height:1.4;height:46px;overflow:hidden}
+.card .rt{position:absolute;top:8px;right:8px;background:#000a;border-radius:8px;padding:1px 7px;font-size:11px;color:var(--ac)}
+.st{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:9px;background:#000a;color:#fff;font-size:15px}.st.on{color:var(--ac)}
+.btn{height:38px;padding:0 15px;border-radius:10px;background:var(--s3);border:1px solid var(--ln);font-size:13px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center}
+.btn:hover{border-color:var(--ac)}.btn.m{background:var(--ac);color:var(--ai);border-color:transparent}.btn.d{color:var(--bad)}
+.em{padding:40px 12px;text-align:center;color:var(--mu)}
+.links{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.lk{display:flex;align-items:center;gap:13px;padding:15px;border-radius:16px;background:var(--s1);border:1px solid var(--ln)}.lk:hover{border-color:var(--ring)}
+.lk i{width:44px;height:44px;border-radius:12px;background:var(--soft);display:grid;place-items:center;color:var(--ac);font-size:20px;font-style:normal;flex:none}
+.lk small{display:block;color:var(--mu);direction:ltr;text-align:right}
+.dev{margin-top:16px;padding:16px;border-radius:16px;background:var(--s2);border:1px solid var(--ring);display:flex;align-items:center;gap:12px;flex-wrap:wrap}.dev div{flex:1;min-width:170px}
+footer{margin-top:34px;padding:18px 0;border-top:1px solid var(--ln);text-align:center;color:var(--mu);font-size:12.5px}footer a{color:var(--ac);font-weight:600}
+.nav{position:fixed;inset:auto 0 0;z-index:25;background:color-mix(in srgb,var(--s1) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav .in{display:flex;width:min(600px,100%);margin:auto}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px;color:var(--mu);font-size:11.5px}.nav span{font-size:19px;line-height:1.2}.nav .on{color:var(--ac)}
+/* مشغل */
+.pm{position:fixed;inset:0;z-index:60;background:#000;display:none}.pm.show{display:block}
+.pl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;user-select:none}
+.pl video{width:100%;height:100%;background:#000}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(#000b,transparent 22%,transparent 68%,#000c);transition:opacity .25s}.pl.idle .ov{opacity:0;cursor:none}.pl.idle .ov *{pointer-events:none}
+.pt{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px}.pt b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.live{background:var(--bad);border-radius:6px;padding:0 8px;font-size:11px;font-weight:700}
+.pb{padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+.pr{display:flex;align-items:center;gap:6px}.pr .ib{background:transparent;border:0;width:38px;height:38px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;background:#fff4;outline:0;direction:ltr;flex:1;min-width:0;padding:0;border:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ac)}
+.tm{font-size:12px;color:#ddd;min-width:44px;text-align:center;direction:ltr}
+.sp{position:absolute;top:50%;left:50%;width:42px;height:42px;margin:-21px;border:4px solid #fff3;border-top-color:var(--ac);border-radius:50%;animation:r .8s linear infinite;display:none}.pl.buf .sp{display:block}@keyframes r{to{transform:rotate(360deg)}}
+.pe{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;background:#000c;padding:16px;border-radius:14px;max-width:86%;display:none}.pe.show{display:block}.pe .btn{margin:8px 3px 0}
+.sel{background:#0009;border:1px solid #fff3;border-radius:8px;height:30px;font-size:12px;padding:0 4px}
+.fit video{object-fit:cover}
+/* لوحة التحكم */
+.md{position:fixed;inset:0;z-index:50;background:#030809cc;backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}.md.show{display:flex}
+.sheet{width:min(720px,100%);max-height:94vh;overflow:auto;background:var(--s1);border:1px solid var(--ln);border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+@media(min-width:760px){.md{align-items:center}.sheet{border-radius:22px}}
+.shd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.shd h3{margin:0;font-size:17px}
+.tabs{display:flex;gap:6px;overflow:auto;margin-bottom:12px}.tabs button{padding:7px 13px;border-radius:10px;background:var(--s2);color:var(--mu);font-weight:600;font-size:13px;white-space:nowrap}.tabs .on{background:var(--ac);color:var(--ai)}
+.pane{display:none}.pane.on{display:block}
+.f{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}.f label{font-size:12.5px;color:var(--mu)}.f input[type=color]{width:56px;height:40px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);padding:3px}
+.ltr{direction:ltr;text-align:left}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:520px){.two{grid-template-columns:1fr}}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--ln)}.sw input,.ck input{accent-color:var(--ac);width:19px;height:19px}
+.lr{display:grid;grid-template-columns:1fr 1.4fr auto;gap:7px;margin-bottom:7px}.lr input{height:38px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);padding:0 9px;outline:0;min-width:0}
+.ck{max-height:240px;overflow:auto;border:1px solid var(--ln);border-radius:12px;background:var(--bg)}.ck label{display:flex;gap:10px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--ln);font-size:13px}
+.hint{font-size:12px;color:var(--mu);margin:6px 0}.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.s4{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}.s4 div{background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:10px}.s4 b{display:block;font:700 19px 'Reem Kufi'}.s4 small{color:var(--mu)}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--s3);border:1px solid var(--ring);padding:9px 16px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:90}#toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+#sp{position:fixed;inset:0;z-index:200;background:radial-gradient(circle at 50% 42%,#173238,#0a1214 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s}
+#sp.out{opacity:0;pointer-events:none}
+#sp .lg{width:132px;height:132px;border-radius:30px;overflow:hidden;position:relative;animation:spin 1s cubic-bezier(.2,1.3,.4,1) both;box-shadow:0 0 0 0 var(--ring);animation:spin 1s cubic-bezier(.2,1.3,.4,1) both,pulse 1.6s .9s ease-out 2}
+#sp .lg:after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,#fff5 50%,transparent 65%);transform:translateX(-120%);animation:shine 1s 1.2s ease-in-out forwards}
+#sp svg{width:100%;height:100%;display:block}
+#sp h1{font:700 30px 'Reem Kufi';margin:0;animation:up .7s 1s both}
+#sp p{margin:0;color:var(--mu);font-size:13px;animation:up .7s 1.3s both;direction:ltr}
+#sp .bar{width:150px;height:4px;border-radius:4px;background:#ffffff1a;overflow:hidden;margin-top:10px;animation:up .5s .8s both}
+#sp .bar i{display:block;height:100%;background:var(--ac);transform-origin:right;animation:fill 2.4s .8s ease-in-out both}
+@keyframes spin{from{opacity:0;transform:scale(.4) rotate(-14deg)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--ring)}100%{box-shadow:0 0 0 46px transparent}}
+@keyframes shine{to{transform:translateX(120%)}}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+body{background:radial-gradient(900px 420px at 85% -80px,color-mix(in srgb,var(--ac) 11%,transparent),transparent),radial-gradient(700px 500px at 0 30%,#14323a55,transparent),var(--bg);background-attachment:fixed}
+.top{background:linear-gradient(#0a1214f2,#0a1214b8);box-shadow:0 1px 0 var(--ln),0 12px 30px #0006}
+.hero h1{background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--ac) 70%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+.chip{transition:.15s}.chip:hover{border-color:var(--ring);color:var(--tx)}.chip.on{box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 35%,transparent)}
+.grid{gap:14px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.grid.v{grid-template-columns:repeat(auto-fill,minmax(138px,1fr))}
+.card{padding:0;border-radius:16px;background:var(--s1);box-shadow:0 8px 22px #0005}.card:hover{transform:translateY(-3px);box-shadow:0 14px 30px #0008,0 0 0 1px var(--ring)}
+.card .cb{display:block;width:100%;text-align:right;padding:0;position:relative}
+.card .im{position:relative;overflow:hidden;display:block;aspect-ratio:16/10;background:linear-gradient(145deg,#f4f7f8,#d6dfe2);font-size:0}
+.card .im img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:13% 16%;opacity:0;transition:opacity .35s}.card .im img.in{opacity:1}
+.v .card .im{aspect-ratio:2/3;background:var(--s2)}.v .card .im img{object-fit:cover;padding:0}
+.card .nm{padding:9px 10px 11px;height:auto;min-height:42px;font-size:12.5px;font-weight:600;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.v .card .nm{position:absolute;inset:auto 0 0;padding:34px 10px 10px;background:linear-gradient(transparent,#000e);color:#fff;min-height:0}
+.ph{position:absolute;inset:0;display:grid;place-items:center;font:700 clamp(24px,6vw,34px) 'Reem Kufi';color:#ffffffb0;letter-spacing:1px}
+.sk{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff55 50%,transparent 70%) 0 0/200% 100%,#c9d3d6;animation:shm 1.2s linear infinite}.v .sk{background:linear-gradient(100deg,transparent 30%,#ffffff18 50%,transparent 70%) 0 0/200% 100%,var(--s3)}
+@keyframes shm{to{background-position:-200% 0}}
+.card .rt{background:#000b;backdrop-filter:blur(6px);z-index:2}.card .st{z-index:2}
+.ft{position:relative;border-radius:22px;overflow:hidden;margin-top:14px;min-height:210px;display:flex;align-items:flex-end;gap:16px;padding:20px;border:1px solid var(--ln);background:var(--s2)}
+.ftb{position:absolute;inset:-24px;width:calc(100% + 48px);height:calc(100% + 48px);object-fit:cover;filter:blur(26px) brightness(.45) saturate(1.3)}
+.ftp{position:relative;width:104px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;box-shadow:0 14px 34px #000a;flex:none;background:var(--s3)}
+.fti{position:relative;display:flex;flex-direction:column;gap:9px;align-items:flex-start}.fti h2{font:700 clamp(20px,4.6vw,30px)/1.25 'Reem Kufi';margin:0}.fti small{color:var(--ac);font-weight:600}
+.pl video{object-fit:contain}.pl.fit video{object-fit:cover}
+</style></head><body>
+<div id="sp"><div class="lg"><svg viewBox="0 0 512 512"><defs><linearGradient id="sa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16292d"/><stop offset="1" stop-color="#081012"/></linearGradient><linearGradient id="sb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6cd72"/><stop offset="1" stop-color="#d9962b"/></linearGradient></defs><rect width="512" height="512" fill="url(#sa)"/><g fill="none" stroke="url(#sb)" stroke-linecap="round" stroke-width="22"><path d="M150 168A158 158 0 0 1 362 168" stroke-opacity=".4"/><path d="M186 206A104 104 0 0 1 326 206" stroke-opacity=".7"/></g><rect x="116" y="236" width="280" height="190" rx="44" fill="url(#sb)"/><path d="M238 282V380L322 331Z" fill="#1a1305" stroke="#1a1305" stroke-width="14" stroke-linejoin="round"/></svg></div><h1 id="spn"></h1><p id="spd"></p><div class="bar"><i></i></div></div>
+<header class="top"><div class="w"><div class="mark"></div><b class="brand" id="bn"></b><div class="sb"><input id="q" type="search" placeholder="ابحث..." autocomplete="off"></div><button class="ib" id="ab" aria-label="لوحة التحكم">⚙</button></div></header>
+<div class="nt" id="nt" hidden></div>
+<main class="w" id="v"></main>
+<footer><div class="w" id="ft"></div></footer>
+<nav class="nav"><div class="in"><button data-v="live" class="on"><span>📺</span>القنوات</button><button data-v="vod"><span>🎬</span>الأفلام</button><button data-v="fav"><span>★</span>المفضلة</button><button data-v="links"><span>✈</span>قنواتنا</button></div></nav>
+<div class="pm" id="pm"><div class="pl" id="pl"><video id="vd" playsinline autoplay></video><div class="sp"></div>
+<div class="pe" id="pe"><div id="pem"></div><button class="btn m" id="pr1">إعادة المحاولة</button><button class="btn" id="pc2">نسخ الرابط</button></div>
+<div class="ov" id="ov"><div class="pt"><button class="ib" id="px" aria-label="إغلاق">✕</button><b id="pti"></b><span class="live" id="plv">مباشر</span></div>
+<div class="pb"><div class="pr" id="skr"><span class="tm" id="t1">0:00</span><input type="range" id="sk" min="0" max="1000" value="0"><span class="tm" id="t2">0:00</span></div>
+<div class="pr"><button class="ib" id="bp" aria-label="تشغيل">⏸</button><button class="ib" id="bm10" aria-label="رجوع 10 ثوان">⟲</button><button class="ib" id="bp10" aria-label="تقديم 10 ثوان">⟳</button><button class="ib" id="bpv">⏮</button><button class="ib" id="bnx">⏭</button><button class="ib" id="bm">🔊</button><input type="range" id="vl" min="0" max="1" step=".05" value="1" style="max-width:80px"><span style="flex:1"></span>
+<select class="sel" id="sq" aria-label="الجودة"></select><select class="sel" id="ss" aria-label="السرعة"><option>0.5</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select>
+<button class="ib" id="bf" title="ملء الشاشة بالقص">⤢</button><button class="ib" id="bpip">⧉</button><button class="ib" id="bfs">⛶</button></div></div></div></div></div>
+<div class="md" id="am"><div class="sheet" id="as"></div></div><div id="toast"></div>
+<script>
+const $=i=>document.getElementById(i);
+const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const D={appName:'مركز القنوات',tagline:'قنوات مباشرة وأفلام بجودة عالية، شغّلها مباشرة أو انسخ الرابط.',accent:'#e8b04b',
+src:0,sources:[{n:'السيرفر 1',server:'http://line.irav25.biz:8080',user:'542500725351739675',pass:'8457561352755875'},{n:'السيرفر 2',server:'http://startseven.tn:2052',user:'09746171',pass:'15445345',cats:['76','556','62','209','51','13','530','529','63','83','575','528','52','438','439','441','440','442','477','443','444','445','446','447','448','501','455','456','457','458','459','460','461']}],pin:'123+098123',notice:'',
+links:[{n:'بوت القنوات',u:'https://t.me/qweqwe2019bot2bot'},{n:'قناة أبو صالح',u:'https://t.me/Abu2Saleh'},{n:'Pixels X Mods APK',u:'https://t.me/pixels_x_mods_apk'}],
+devName:'Hamodi9005',devUrl:'https://t.me/Hamodi9005',copyright:'',showSplash:true,showCopy:true,showMovies:true,showFav:true,hidden:[]};
+const KC='hamodi_cfg_v2',KF='hamodi_fav_v2',KP='hamodi_pos_v2';
+const lg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
+const ls=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
+let cfg={...D,...lg(KC,{})},favs=lg(KF,[]);
+const T={live:{cats:[],list:[],by:new Map(),ok:false},vod:{cats:[],list:[],by:new Map(),ok:false}};
+let gen=0,view='live',sel={live:'all',vod:'all'},lim=90,conn='load',cmsg='',info=null;
+const toast=t=>{const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2000)};
+const S=()=>cfg.sources[cfg.src]||cfg.sources[0],sp=()=>cfg.src?cfg.src+':':'';
+const base=()=>S().server.trim().replace(/\/+$/,'');
+async function api(action){
+ const p={username:S().user,password:S().pass};if(action)p.action=action;
+ const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+ try{const r=await fetch(base()+'/player_api.php?'+new URLSearchParams(p),{cache:'no-store',signal:c.signal});
+  if(!r.ok)throw Error('السيرفر رد برمز HTTP '+r.status);
+  let d;try{d=JSON.parse(await r.text())}catch(_){throw Error('رد السيرفر ليس JSON صالحاً')}
+  if(d&&d.user_info&&d.user_info.auth===0)throw Error('بيانات الاشتراك غير مقبولة');return d}
+ catch(e){if(e.name==='AbortError')throw Error('انتهت مهلة الاتصال');if(e instanceof TypeError)throw Error('تعذر الوصول للسيرفر (CORS أو Mixed Content أو لا يوجد إنترنت)');throw e}
+ finally{clearTimeout(t)}}
+function fill(k,cats,list){const o=T[k];o.cats=cats;o.list=list;o.by=new Map();list.forEach(s=>{const c=String(s.category_id);(o.by.get(c)||o.by.set(c,[]).get(c)).push(s)});o.ok=true}
+async function load(){const g=gen;
+ conn='load';draw();try{const l=h('link');l.rel='preconnect';l.href=base();document.head.append(l)}catch(_){}
+ try{let[c,l]=await Promise.all([api('get_live_categories'),api('get_live_streams')]);
+  if(!Array.isArray(c)||!Array.isArray(l))throw Error('السيرفر لم يرجع قوائم صالحة');const al=S().cats;if(al&&c.length){c=c.filter(x=>al.includes(String(x.category_id))).sort((a,b)=>al.indexOf(String(a.category_id))-al.indexOf(String(b.category_id)));l=l.filter(x=>al.includes(String(x.category_id)))}if(g!==gen)return;fill('live',c,l);conn='ok'}
+ catch(e){if(g!==gen)return;conn='er';cmsg=e.message}
+ api('').then(d=>{if(g!==gen)return;info=d.user_info;if(view==='live')draw()}).catch(()=>{});draw()}
+async function loadVod(){const g=gen;
+ if(T.vod.ok)return;
+ try{const[c,l]=await Promise.all([api('get_vod_categories'),api('get_vod_streams')]);if(g!==gen)return;fill('vod',Array.isArray(c)?c:[],Array.isArray(l)?l:[])}
+ catch(e){toast('تعذر تحميل الأفلام: '+e.message)}draw()}
+const url=(k,s,ext)=>k==='vod'?`${base()}/movie/${encodeURIComponent(S().user)}/${encodeURIComponent(S().pass)}/${s.stream_id}.${s.container_extension||'mp4'}`:`${base()}/live/${encodeURIComponent(S().user)}/${encodeURIComponent(S().pass)}/${s.stream_id}.${ext||'m3u8'}`;
+async function copy(t){try{if(navigator.clipboard&&isSecureContext){await navigator.clipboard.writeText(t);return 1}}catch(_){}
+ try{const a=h('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.append(a);a.select();const o=document.execCommand('copy');a.remove();return o}catch(_){return 0}}
+const fk=(k,s)=>(k==='vod'?'v:':'l:')+sp()+s.stream_id,isF=key=>favs.includes(key);
+const togF=key=>{favs=isF(key)?favs.filter(x=>x!==key):[key,...favs];ls(KF,favs)};
+function apply(){document.documentElement.style.setProperty('--ac',cfg.accent);document.title=cfg.appName;$('bn').textContent=cfg.appName;
+ $('nt').hidden=!cfg.notice.trim();$('nt').textContent=cfg.notice;
+ const f=$('ft');f.textContent=(cfg.copyright.trim()||'© '+new Date().getFullYear()+' جميع الحقوق محفوظة للمطور')+' ';
+ const a=h('a',null,'@'+cfg.devName.replace(/^@/,''));a.href=cfg.devUrl;a.target='_blank';a.rel='noopener noreferrer';f.append(a);
+ document.querySelector('[data-v=vod]').style.display=cfg.showMovies?'':'none';document.querySelector('[data-v=fav]').style.display=cfg.showFav?'':'none'}
+const hue=n=>{let x=7;for(const c of n||'')x=(x*31+c.charCodeAt(0))%360;return x};
+const ini=n=>((n||'').replace(/[^\p{L}\p{N} ]/gu,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase())||'TV';
+function art(s){const im=h('div','im');
+ const ph=()=>{im.textContent='';const p=h('div','ph',ini(s.name));p.style.background=`linear-gradient(145deg,hsl(${hue(s.name)} 42% 30%),hsl(${(hue(s.name)+45)%360} 48% 13%))`;im.append(p)};
+ if(!s.stream_icon){ph();return im}
+ im.append(h('div','sk'));const i=new Image();i.alt='';i.decoding='async';i.referrerPolicy='no-referrer';i.loading='lazy';
+ i.onload=()=>{const k=im.querySelector('.sk');k&&k.remove();i.classList.add('in')};i.onerror=ph;i.src=s.stream_icon;im.append(i);return im}
+function card(k,s,arr){const c=h('div','card'),b=h('button','cb');b.append(art(s),h('div','nm',s.name||'بدون اسم'));c.append(b);
+ const r=parseFloat(s.rating);if(k==='vod'&&r>0)c.append(h('span','rt','★ '+r.toFixed(1)));
+ if(cfg.showFav){const st=h('button','st'+(isF(fk(k,s))?' on':''),isF(fk(k,s))?'★':'☆');st.onclick=e=>{e.stopPropagation();togF(fk(k,s));st.className='st'+(isF(fk(k,s))?' on':'');st.textContent=isF(fk(k,s))?'★':'☆';if(view==='fav')draw()};c.append(st)}
+ b.onclick=()=>play(k,arr,arr.indexOf(s));return c}
+function feat(arr){const f=arr.reduce((m,s)=>s.stream_icon&&(+s.added||0)>(+m.added||0)?s:m,arr.find(s=>s.stream_icon)||arr[0]);const d=h('section','ft');
+ const im=u=>{const i=new Image();i.alt='';i.referrerPolicy='no-referrer';i.src=u;return i};
+ if(f.stream_icon){const b=im(f.stream_icon);b.className='ftb';d.append(b);const p=im(f.stream_icon);p.className='ftp';d.append(p)}
+ const t=h('div','fti');t.append(h('small',null,'مختارات اليوم'),h('h2',null,f.name||''));const r=parseFloat(f.rating);if(r>0)t.append(h('span','pill','★ '+r.toFixed(1)));
+ const b=h('button','btn m','▶ تشغيل الآن');b.onclick=()=>play('vod',arr,arr.indexOf(f));t.append(b);d.append(t);return d}
+function srcBar(){const d=h('div','chips');d.style.paddingTop='12px';cfg.sources.forEach((x,i)=>{const b=h('button','chip'+(i===cfg.src?' on':''),x.n||('مصدر '+(i+1)));b.onclick=()=>setSrc(i);d.append(b)});return d}
+function setSrc(i){if(i===cfg.src)return;gen++;cfg.src=i;ls(KC,cfg);['live','vod'].forEach(k=>{T[k].cats=[];T[k].list=[];T[k].by=new Map();T[k].ok=false});sel={live:'all',vod:'all'};info=null;lim=90;load();if(view==='vod')loadVod()}
+function grid(k,arr,max){const g=h('div','grid'+(k==='vod'?' v':''));arr.slice(0,max).forEach(s=>g.append(card(k,s,arr)));return g}
+function draw(){
+ const r=$('v');r.textContent='';const q=$('q').value.trim().toLowerCase();
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+ if(view==='links'){r.append(sh('قنواتنا'));const g=h('div','links');
+  cfg.links.filter(l=>l.u).forEach(l=>{const a=h('a','lk');a.href=l.u;a.target='_blank';a.rel='noopener noreferrer';const d=h('div');d.append(h('b',null,l.n||'قناة'),h('small',null,l.u.replace(/^https?:\/\//,'')));a.append(h('i',null,'✈'),d);g.append(a)});r.append(g);
+  const d=h('div','dev'),t=h('div');t.append(h('b',null,'تواصل مع المطور'),h('small',null,'@'+cfg.devName.replace(/^@/,'')));
+  const a=h('a','btn m','فتح تيليجرام');a.href=cfg.devUrl;a.target='_blank';a.rel='noopener noreferrer';d.append(t,a);r.append(d);return}
+ if(view==='fav'){r.append(sh('المفضلة'));const all=[];
+  ['live','vod'].forEach(k=>{const m=new Map(T[k].list.map(s=>[fk(k,s),s]));favs.filter(x=>x[0]===k[0]).forEach(x=>m.has(x)&&all.push([k,m.get(x)]))});
+  if(!all.length){r.append(h('div','em','لا توجد مفضلة بعد. اضغط ☆ على أي قناة أو فيلم.'));return}
+  ['live','vod'].forEach(k=>{const a=all.filter(x=>x[0]===k).map(x=>x[1]);if(a.length){r.append(sh(k==='vod'?'الأفلام':'القنوات'),grid(k,a,300))}});return}
+ const k=view,o=T[k];if(cfg.sources.length>1)r.append(srcBar());
+ if(k==='live'){const hero=h('section','hero');hero.append(h('h1',null,cfg.appName),h('p',null,cfg.tagline));const p=h('div','pills');
+  const c=h('span','pill');c.append(h('i','dot '+(conn==='ok'?'ok':conn==='er'?'er':'')),conn==='ok'?'متصل':conn==='er'?'غير متصل':'جاري الاتصال');p.append(c);
+  if(conn==='ok'){const a=h('span','pill');a.append('القنوات ',h('b',null,o.list.length));p.append(a)}
+  if(info&&info.exp_date){const e=h('span','pill');e.append('ينتهي الاشتراك ',h('b',null,new Date(info.exp_date*1000).toLocaleDateString('ar')));p.append(e)}
+  hero.append(p);r.append(hero)}
+ if(k==='live'&&conn==='er'){const e=h('div','em');e.append(h('div',null,'تعذر جلب القنوات: '+cmsg));const b=h('button','btn m','إعادة المحاولة');b.onclick=load;e.append(b);r.append(e);return}
+ if(k==='live'&&conn==='load'||k==='vod'&&!o.ok){r.append(h('div','em','جاري التحميل...'));return}
+ const hid=new Set(cfg.hidden),cats=o.cats.filter(c=>!hid.has(k[0]+':'+sp()+c.category_id));
+ const ch=h('div','chips');const mk=(id,t)=>{const b=h('button','chip'+(sel[k]===id?' on':''),t);b.onclick=()=>{sel[k]=id;lim=90;draw()};ch.append(b)};
+ mk('all','الكل');cats.forEach(c=>mk(String(c.category_id),c.category_name));r.append(ch);
+ let arr=sel[k]==='all'?o.list.filter(s=>!hid.has(k[0]+':'+sp()+s.category_id)):(o.by.get(sel[k])||[]);
+ if(q)arr=arr.filter(s=>(s.name||'').toLowerCase().includes(q));
+ if(k==='vod'&&!q&&sel.vod==='all'&&arr.length)r.append(feat(arr));
+ r.append(sh((k==='vod'?'الأفلام':'القنوات')+' ('+arr.length+')'));
+ r.append(arr.length?grid(k,arr,lim):h('div','em','لا توجد نتائج'));
+ if(arr.length>lim){const m=h('button','btn','عرض المزيد');m.style.cssText='display:flex;margin:14px auto';m.onclick=()=>{lim+=120;draw()};r.append(m)}}
+const sh=t=>{const d=h('div','sh');d.append(h('h2',null,t));return d};
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{view=b.dataset.v;lim=90;if(view!=='live'&&view!=='vod')$('q').value='';draw();scrollTo(0,0);if(view==='vod'||view==='fav')loadVod()});
+let qt;$('q').oninput=()=>{clearTimeout(qt);qt=setTimeout(()=>{if(view==='links'||view==='fav')view='live';lim=90;draw()},200)};
+/* ===== المشغل الاحترافي ===== */
+const V=$('vd'),PL=$('pl');let hls=null,cur=null,idle,tries=0,mode='m3u8',wd,lp=0;
+const tf=t=>{if(!isFinite(t)||t<0)return'0:00';t=Math.floor(t);const m=Math.floor(t/60),s=String(t%60).padStart(2,'0');return m>=60?Math.floor(m/60)+':'+String(m%60).padStart(2,'0')+':'+s:m+':'+s};
+function wake(){PL.classList.remove('idle');clearTimeout(idle);if(!V.paused)idle=setTimeout(()=>PL.classList.add('idle'),3200)}
+function stop(){try{V.pause()}catch(_){}if(hls){hls.destroy();hls=null}V.removeAttribute('src');V.load()}
+function play(k,arr,i){cur={k,arr,i};$('pm').classList.add('show');start('m3u8')}
+function start(m){
+ const{k,arr,i}=cur,s=arr[i];mode=m;stop();tries=0;$('pe').classList.remove('show');PL.classList.add('buf');
+ $('pti').textContent=s.name||'';V.poster=s.stream_icon||'';const vod=k==='vod';$('bm10').style.display=$('bp10').style.display=vod?'':'none';clearTimeout(wd);if(!vod)wd=setTimeout(()=>{if(cur&&cur.arr[cur.i]===s&&V.readyState<3){if(m==='m3u8')start('ts');else fail()}},m==='m3u8'?8000:9000);$('plv').style.display=vod?'none':'';$('skr').style.display=vod?'flex':'none';$('ss').style.display=vod?'':'none';
+ $('bpv').style.display=$('bnx').style.display=arr.length>1?'':'none';$('sq').style.display='none';V.playbackRate=1;$('ss').value='1';
+ const u=vod?url('vod',s):url('live',s,m);
+ if(!vod&&m==='m3u8'&&window.Hls&&Hls.isSupported()){
+  hls=new Hls({startLevel:0,capLevelToPlayerSize:true,maxBufferLength:12,maxMaxBufferLength:30,backBufferLength:20,liveSyncDurationCount:2,liveMaxLatencyDurationCount:6,manifestLoadingTimeOut:6000,manifestLoadingMaxRetry:1,manifestLoadingRetryDelay:400,levelLoadingTimeOut:6000,levelLoadingMaxRetry:1,fragLoadingTimeOut:9000,fragLoadingMaxRetry:2,startFragPrefetch:true,enableWorker:true,lowLatencyMode:false,testBandwidth:false,abrEwmaDefaultEstimate:3e6});hls.loadSource(u);hls.attachMedia(V);
+  hls.on(Hls.Events.MANIFEST_PARSED,(_,d)=>{V.play().catch(()=>{});const q=$('sq');q.textContent='';q.append(new Option('تلقائي',-1));d.levels.forEach((l,n)=>q.append(new Option((l.height||'?')+'p',n)));q.style.display=d.levels.length>1?'':'none'});
+  hls.on(Hls.Events.ERROR,(_,d)=>{if(!d.fatal)return;
+   if(d.type===Hls.ErrorTypes.NETWORK_ERROR&&tries++<2)hls.startLoad();
+   else if(d.type===Hls.ErrorTypes.MEDIA_ERROR&&tries++<2)hls.recoverMediaError();
+   else start('ts')})}
+ else{V.src=u;if(vod){const p=lg(KP,{})[s.stream_id];if(p>5)V.addEventListener('loadedmetadata',()=>{V.currentTime=p},{once:true})}V.play().catch(()=>{})}
+ wake()}
+function fail(){PL.classList.remove('buf');$('pem').textContent=cur.k==='vod'?'تعذر تشغيل الفيلم. قد تكون الصيغة (mkv) غير مدعومة في هذا الجهاز، انسخ الرابط وافتحه بمشغل خارجي.':'تعذر تشغيل القناة. قد تكون معطلة أو السيرفر لا يدعم التشغيل داخل المتصفح.';$('pe').classList.add('show')}
+V.onerror=()=>{if(cur&&cur.k==='live'&&mode==='m3u8'&&!hls)start('ts');else if(cur&&mode==='m3u8'&&cur.k==='live'){}else fail()};
+V.onwaiting=()=>PL.classList.add('buf');V.onplaying=()=>{clearTimeout(wd);PL.classList.remove('buf');$('pe').classList.remove('show');$('bp').textContent='⏸';wake()};
+V.onpause=()=>{$('bp').textContent='▶';wake()};
+V.ontimeupdate=()=>{if(cur&&cur.k==='vod'&&V.duration){const n=Date.now();if(n-lp>5000){lp=n;const m=lg(KP,{}),id=cur.arr[cur.i].stream_id;if(V.currentTime/V.duration>.95)delete m[id];else m[id]=Math.floor(V.currentTime);ls(KP,m)}$('sk').value=V.currentTime/V.duration*1000;$('t1').textContent=tf(V.currentTime);$('t2').textContent=tf(V.duration)}};
+let ts_=0;
+$('sk').oninput=e=>{if(V.duration)V.currentTime=e.target.value/1000*V.duration};
+$('bp').onclick=()=>V.paused?V.play():V.pause();$('bm10').onclick=()=>V.currentTime-=10;$('bp10').onclick=()=>V.currentTime+=10;
+const go=d=>{cur.i=(cur.i+d+cur.arr.length)%cur.arr.length;start('m3u8')};$('bpv').onclick=()=>go(-1);$('bnx').onclick=()=>go(1);
+$('bm').onclick=()=>{V.muted=!V.muted;$('bm').textContent=V.muted?'🔇':'🔊'};$('vl').oninput=e=>{V.volume=e.target.value;V.muted=false;$('bm').textContent='🔊'};
+$('sq').onchange=e=>{if(hls)hls.currentLevel=+e.target.value};$('ss').onchange=e=>V.playbackRate=+e.target.value;
+$('bf').onclick=()=>PL.classList.toggle('fit');
+$('bpip').onclick=()=>{try{document.pictureInPictureElement?document.exitPictureInPicture():V.requestPictureInPicture()}catch(_){toast('غير مدعوم')}};
+$('bfs').onclick=()=>{try{if(document.fullscreenElement)document.exitFullscreen();else{($('pm').requestFullscreen||$('pm').webkitRequestFullscreen).call($('pm'));screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})}}catch(_){}};
+$('px').onclick=()=>{stop();$('pm').classList.remove('show');if(document.fullscreenElement)document.exitFullscreen()};
+$('pr1').onclick=()=>start('m3u8');$('pc2').onclick=async()=>toast(await copy(url(cur.k,cur.arr[cur.i],mode))?'تم نسخ الرابط':'تعذر النسخ');
+PL.addEventListener('pointermove',wake);
+PL.addEventListener('click',e=>{if(e.target.closest('button,input,select'))return;
+ if(PL.classList.contains('idle')){wake();return}
+ const n=Date.now();if(n-ts_<300&&cur&&cur.k==='vod'){const r=PL.getBoundingClientRect();V.currentTime+=(e.clientX-r.left>r.width/2?10:-10)}ts_=n;wake()});
+document.addEventListener('keydown',e=>{if(!$('pm').classList.contains('show'))return;
+ if(e.key===' '){e.preventDefault();$('bp').click()}else if(e.key==='ArrowRight'&&cur.k==='vod')V.currentTime+=10;else if(e.key==='ArrowLeft'&&cur.k==='vod')V.currentTime-=10;else if(e.key==='f')$('bfs').click();else if(e.key==='m')$('bm').click();else if(e.key==='Escape')$('px').click()});
+/* ===== لوحة التحكم ===== */
+const closeA=()=>$('am').classList.remove('show');
+$('am').onclick=e=>{if(e.target.id==='am')closeA()};
+$('ab').onclick=()=>{$('am').classList.add('show');login()};
+function head(){const d=h('div','shd');d.append(h('h3',null,'لوحة التحكم'));const x=h('button','ib','✕');x.onclick=closeA;d.append(x);return d}
+function login(){const s=$('as');s.textContent='';const f=h('div','f');f.append(h('label',null,'أدخل كلمة مرور لوحة التحكم'));
+ const i=h('input');i.type='password';i.autocomplete='off';f.append(i);const m=h('p','hint');const b=h('button','btn m','دخول');
+ const ok=()=>{if(i.value===cfg.pin)panel();else{m.textContent='كلمة المرور غير صحيحة';m.style.color='var(--bad)'}};
+ b.onclick=ok;i.onkeydown=e=>{if(e.key==='Enter')ok()};s.append(head(),f,b,m);setTimeout(()=>i.focus(),50)}
+const fld=(l,key,o={})=>{const f=h('div','f');f.append(h('label',null,l));const i=h('input');i.type=o.t||'text';i.value=cfg[key]||'';if(o.l)i.className='ltr';i.dataset.key=key;f.append(i);return f};
+const swr=(l,key)=>{const r=h('label','sw');r.append(h('span',null,l));const c=h('input');c.type='checkbox';c.checked=!!cfg[key];c.dataset.key=key;r.append(c);return r};
+function panel(){const s=$('as');s.textContent='';const tb=h('div','tabs'),P={};
+ [['o','نظرة عامة'],['l','المظهر'],['sv','السيرفر'],['k','الروابط'],['c','الأقسام'],['a','الأمان']].forEach(([k,t],n)=>{const b=h('button',n?'':'on',t);b.onclick=()=>{tb.querySelectorAll('button').forEach(z=>z.classList.remove('on'));b.classList.add('on');Object.values(P).forEach(p=>p.classList.remove('on'));P[k].classList.add('on')};tb.append(b);P[k]=h('div','pane'+(n?'':' on'))});
+ const s4=h('div','s4');[[T.live.list.length,'قناة'],[T.vod.ok?T.vod.list.length:'—','فيلم'],[favs.length,'مفضلة'],[conn==='ok'?'متصل':'غير متصل','الحالة'],[info?(info.status||'—'):'—','الاشتراك'],[info?(info.active_cons+'/'+info.max_connections):'—','الاتصالات']].forEach(([v,l])=>{const d=h('div');d.append(h('b',null,String(v)),h('small',null,l));s4.append(d)});
+ const t1=h('button','btn m','فحص الاتصال وتحديث البيانات');t1.onclick=async()=>{t1.textContent='جاري الفحص...';T.vod.ok=false;await load();panel()};
+ const t2=h('button','btn','تجربة تشغيل أول قناة');t2.onclick=()=>{if(!T.live.list.length)return toast('لا توجد قنوات');closeA();play('live',T.live.list,0)};
+ const a1=h('div','acts');a1.append(t1,t2);P.o.append(s4,a1);if(conn==='er')P.o.append(Object.assign(h('p','hint','آخر خطأ: '+cmsg),{style:'color:var(--bad)'}));
+ P.l.append(fld('اسم التطبيق','appName'),fld('الوصف','tagline'),fld('رسالة تنبيه أعلى الصفحة','notice'));
+ const cf=h('div','f');cf.append(h('label',null,'اللون الرئيسي'));const ci=h('input');ci.type='color';ci.value=cfg.accent;ci.dataset.key='accent';cf.append(ci);
+ P.l.append(cf,swr('شاشة البداية','showSplash'),swr('قسم الأفلام','showMovies'),swr('المفضلة','showFav'),swr('زر نسخ الرابط','showCopy'));
+ const sw_=h('div');const cs=()=>[...sw_.querySelectorAll('.sr')].map(r=>({n:r.querySelector('[data-f=n]').value.trim(),server:r.querySelector('[data-f=server]').value.trim(),user:r.querySelector('[data-f=user]').value.trim(),pass:r.querySelector('[data-f=pass]').value.trim(),cats:JSON.parse(r.dataset.cats)||undefined}));
+ const ds=a=>{sw_.textContent='';a.forEach((x,i)=>{const r=h('div','sr');r.dataset.cats=JSON.stringify(x.cats||null);r.style.cssText='border:1px solid var(--ln);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--bg)';
+  [['n','اسم المصدر'],['server','عنوان السيرفر'],['user','اسم المستخدم'],['pass','كلمة المرور']].forEach(([f,l])=>{const d=h('div','f');d.append(h('label',null,l));const inp=h('input');inp.type='text';inp.value=x[f]||'';inp.dataset.f=f;if(f!=='n')inp.className='ltr';d.append(inp);r.append(d)});
+  if(a.length>1){const b=h('button','btn d','حذف المصدر');b.onclick=()=>{const z=cs();z.splice(i,1);ds(z)};r.append(b)}sw_.append(r)})};ds(cfg.sources.map(x=>({...x})));
+ const as_=h('button','btn','+ إضافة مصدر');as_.onclick=()=>{const z=cs();z.push({n:'مصدر '+(z.length+1),server:'',user:'',pass:''});ds(z)};P.sv.append(sw_,as_,h('p','hint','كل مصدر يظهر كزر في أعلى القنوات والأفلام للتبديل بينها.'));
+ const lw=h('div');const col=()=>[...lw.querySelectorAll('.lr')].map(r=>({n:r.children[0].value.trim(),u:r.children[1].value.trim()}));
+ const dl=a=>{lw.textContent='';a.forEach((l,i)=>{const r=h('div','lr'),x=h('input'),y=h('input','ltr'),d=h('button','btn d','حذف');x.value=l.n;x.placeholder='الاسم';y.value=l.u;y.placeholder='https://t.me/...';d.onclick=()=>{const z=col();z.splice(i,1);dl(z)};r.append(x,y,d);lw.append(r)})};dl(cfg.links.map(l=>({...l})));
+ const ad=h('button','btn','+ إضافة رابط');ad.onclick=()=>{const z=col();z.push({n:'',u:''});dl(z)};
+ const t3=h('div','two');t3.append(fld('اسم المطور','devName',{l:1}),fld('رابط المطور','devUrl',{l:1}));P.k.append(lw,ad,h('div','sh'),t3,fld('نص الحقوق (فارغ = الافتراضي)','copyright'));
+ const ckb=(pre,cats)=>{const b=h('div','ck');cats.forEach(c=>{const l=h('label'),i=h('input');i.type='checkbox';i.dataset.cid=pre+':'+sp()+c.category_id;i.checked=!cfg.hidden.includes(pre+':'+sp()+c.category_id);l.append(i,h('span',null,c.category_name));b.append(l)});return b};
+ P.c.append(h('p','hint','أزل العلامة لإخفاء القسم. أقسام القنوات:'),ckb('l',T.live.cats));
+ if(T.vod.ok)P.c.append(h('p','hint','أقسام الأفلام:'),ckb('v',T.vod.cats));else P.c.append(h('p','hint','افتح تبويب الأفلام أولاً لتظهر أقسامها هنا.'));
+ P.a.append(fld('كلمة مرور لوحة التحكم','pin',{l:1}),h('p','hint','كلمة المرور تحمي اللوحة من الاستخدام العرضي فقط، لأنها محفوظة داخل التطبيق نفسه.'));
+ const rs=h('button','btn d','استعادة الافتراضي');rs.onclick=()=>{if(confirm('استعادة كل الإعدادات؟')){cfg={...D};ls(KC,cfg);apply();T.vod.ok=false;load();panel()}};P.a.append(rs);
+ const sv=h('button','btn m','حفظ وتطبيق');sv.onclick=()=>{const n={...cfg};
+  s.querySelectorAll('[data-key]').forEach(e=>n[e.dataset.key]=e.type==='checkbox'?e.checked:e.value);
+  n.links=col().filter(l=>l.u);n.sources=cs().filter(x=>x.server&&x.user&&x.pass);if(!n.sources.length)n.sources=D.sources;if(n.src>=n.sources.length)n.src=0;const boxes=[...s.querySelectorAll('[data-cid]')];
+  n.hidden=cfg.hidden.filter(x=>!boxes.some(b=>b.dataset.cid===x)).concat(boxes.filter(b=>!b.checked).map(b=>b.dataset.cid));
+  if(!n.pin.trim())n.pin=D.pin;const rl=JSON.stringify(n.sources)!==JSON.stringify(cfg.sources);
+  cfg=n;ls(KC,cfg);apply();if(rl){T.vod.ok=false;load()}else draw();toast('تم الحفظ');closeA()};
+ const ac=h('div','acts');ac.append(sv);s.append(head(),tb,...Object.values(P),ac)}
+function splash(){const e=$('sp');if(!cfg.showSplash){e.remove();return}$('spn').textContent=cfg.appName;$('spd').textContent='by @'+cfg.devName.replace(/^@/,'');
+ const end=()=>{e.classList.add('out');setTimeout(()=>e.remove(),500)};e.onclick=end;setTimeout(end,3500)}
+apply();splash();draw();addEventListener('DOMContentLoaded',load);
+</script></body></html>

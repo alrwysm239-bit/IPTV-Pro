@@ -67,7 +67,7 @@ export function isWifiAllowedForAutoScan(dataSaver: boolean): boolean {
   return true;
 }
 
-// جلب مصدر M3U مع مهلة 15 ثانية وتجربة الوسيط البديل عند حظر CORS
+// جلب مصدر M3U عبر الوسيط المدمج ثم المباشر ثم الوسيط البديل عند الحظر
 export async function fetchM3UText(
   url: string,
   corsProxy: string
@@ -81,20 +81,31 @@ export async function fetchM3UText(
         cache: 'no-cache',
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.text();
+      const text = await res.text();
+      const trimmed = text.trim();
+      if (!trimmed || /^<!doctype\s+html|^<html/i.test(trimmed)) {
+        throw new Error('Unexpected HTML response');
+      }
+      return text;
     } finally {
       clearTimeout(timer);
     }
   };
 
   try {
-    const text = await tryFetch(url);
+    const localProxyUrl = `/api/xtream?url=${encodeURIComponent(url)}`;
+    const text = await tryFetch(localProxyUrl);
     return { text, usedProxy: false };
-  } catch (directErr) {
-    if (!corsProxy) throw directErr;
-    const proxiedUrl = `${corsProxy}${encodeURIComponent(url)}`;
-    const text = await tryFetch(proxiedUrl);
-    return { text, usedProxy: true };
+  } catch {
+    try {
+      const text = await tryFetch(url);
+      return { text, usedProxy: false };
+    } catch (directErr) {
+      if (!corsProxy) throw directErr;
+      const proxiedUrl = `${corsProxy}${encodeURIComponent(url)}`;
+      const text = await tryFetch(proxiedUrl);
+      return { text, usedProxy: true };
+    }
   }
 }
 

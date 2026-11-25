@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>القنوات المباشرة</title>
+<style>
+:root{--bg:#0d0f15;--panel:#191d28;--line:#2d3445;--purple:#7959ed;--muted:#aeb5c5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f5f6fa;font-family:Tahoma,Arial,sans-serif}
+main{max-width:1050px;margin:auto;padding:18px 14px 35px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:25px;margin:5px 0} h2{font-size:21px;margin:0 0 5px}
+.muted{color:var(--muted);font-size:13px}
+input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:#fff;font-size:15px;margin:12px 0 16px;outline:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:11px}
+.cat{width:100%;border:1px solid var(--line);background:var(--panel);color:#fff;border-radius:13px;padding:15px;text-align:right;display:flex;align-items:center;gap:12px;min-height:72px;font:inherit;cursor:pointer}
+.cat:hover{border-color:#947eff;background:#22263a}
+.cat .id{width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#30265a;color:#ded5ff;display:grid;place-items:center;font-weight:bold;font-size:13px}
+.hidden{display:none!important}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.back{background:#30265a;color:white;border:1px solid #5c4b9e;border-radius:10px;padding:11px 14px;font:inherit;cursor:pointer}
+.channel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:13px}
+.channel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:13px;display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:62px;height:62px;flex:0 0 62px;border-radius:12px;background:#242a3a;object-fit:contain;padding:5px}
+.logo-fallback{display:grid;place-items:center;color:#c9bbff;font-size:25px}
+.info{flex:1;min-width:0}
+.channel-name{font-weight:bold;line-height:1.5;overflow-wrap:anywhere}
+.copy{border:0;border-radius:9px;padding:10px 12px;background:var(--purple);color:white;font-weight:bold;font-size:13px;cursor:pointer;white-space:nowrap}
+.copy:active{transform:scale(.97)}
+#status{margin:14px 0;color:#c9c4e6;line-height:1.7;white-space:pre-wrap}
+.empty{grid-column:1/-1;text-align:center;padding:25px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px}
+footer{margin-top:24px;color:#82899a;font-size:12px;line-height:1.8}
+@media(max-width:420px){.channel-grid{grid-template-columns:1fr}.copy{padding:9px 10px}}
+</style>
+
+<style>
+.vault-lock{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 15%,#34265f 0,#171326 38%,#090a10 78%);color:#fff;font-family:Tahoma,Arial,sans-serif}
+.vault-card{width:min(100%,390px);padding:28px 24px;border:1px solid rgba(190,166,255,.28);border-radius:25px;background:linear-gradient(160deg,rgba(39,34,61,.97),rgba(16,18,29,.98));box-shadow:0 24px 80px #0009;text-align:center}
+.vault-icon{width:76px;height:76px;margin:0 auto 14px;display:grid;place-items:center;border-radius:22px;background:linear-gradient(145deg,#8d6cff,#5034b0);font-size:34px;box-shadow:0 8px 28px #7959ed55}
+.vault-kicker{font-size:10px;letter-spacing:4px;color:#b9a8ff;font-weight:bold}
+.vault-card h1{font-size:25px;margin:10px 0 7px}
+.vault-card p{font-size:13px;color:#b9bbca;margin:0 0 20px}
+.pin-dots{display:flex;justify-content:center;gap:9px;margin:0 0 20px;direction:ltr}
+.pin-dots i{width:10px;height:10px;border-radius:50%;background:#454052;border:1px solid #777087}
+.pin-dots i.filled{background:#b9a4ff;border-color:#b9a4ff;box-shadow:0 0 10px #a78bfa}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px;direction:ltr}
+.keypad button{height:48px;border:1px solid #ffffff16;border-radius:12px;background:#ffffff0b;color:#fff;font-size:18px;font-weight:bold;cursor:pointer}
+.keypad button:active{background:#7657e8}
+.keypad .key-action{font-size:13px;color:#c9baff;background:#34295a}
+#vaultInput{width:100%;height:45px;border:1px solid #51466f;border-radius:11px;background:#0d0e17;color:#fff;text-align:center;letter-spacing:3px;font-size:16px;outline:none}
+.unlock-btn{width:100%;height:47px;margin-top:12px;border:0;border-radius:11px;background:linear-gradient(90deg,#7657e8,#9a72ff);color:white;font-weight:bold;font-size:15px;cursor:pointer}
+#lockMessage{min-height:20px;margin-top:12px;color:#ff9d9d;font-size:12px}
+body.locked{overflow:hidden}
+</style>
+
+</head>
+<body class="locked">
+
+<div id="vaultLock" class="vault-lock">
+  <div class="vault-card">
+    <div class="vault-icon">🔒</div>
+    <div class="vault-kicker">PRIVATE ACCESS</div>
+    <h1>الخزنة الخاصة</h1>
+    <p>أدخل رمز القفل للمتابعة</p>
+    <div class="pin-dots" id="pinDots" aria-label="حالة إدخال الرمز">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <div class="keypad">
+      <button type="button" data-key="1">1</button>
+      <button type="button" data-key="2">2</button>
+      <button type="button" data-key="3">3</button>
+      <button type="button" data-key="4">4</button>
+      <button type="button" data-key="5">5</button>
+      <button type="button" data-key="6">6</button>
+      <button type="button" data-key="7">7</button>
+      <button type="button" data-key="8">8</button>
+      <button type="button" data-key="9">9</button>
+      <button type="button" class="key-action" data-key="clear">مسح</button>
+      <button type="button" data-key="0">0</button>
+      <button type="button" class="key-action" data-key="back">⌫</button>
+    </div>
+    <input id="vaultInput" type="password" inputmode="text" autocomplete="off"
+      placeholder="أدخل الرمز هنا" aria-label="رمز القفل">
+    <button type="button" id="unlockBtn" class="unlock-btn">فتح الخزنة</button>
+    <div id="lockMessage" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<main>
+  <section id="categoryPage">
+    <header>
+      <div><h1>أقسام القنوات</h1><div class="muted">اضغط على القسم حتى تفتح صفحة قنواته</div></div>
+      <div class="muted">33 قسم</div>
+    </header>
+    <input id="categorySearch" type="search" placeholder="ابحث عن قسم..." autocomplete="off">
+    <div id="categoryList" class="grid"></div>
+  </section>
+
+  <section id="channelPage" class="hidden">
+    <div class="toolbar">
+      <button class="back" id="backButton" type="button">← رجوع للأقسام</button>
+      <div>
+        <h2 id="selectedCategory"></h2>
+        <div class="muted" id="channelCount">جاري تحميل القنوات...</div>
+      </div>
+    </div>
+    <input id="channelSearch" type="search" placeholder="ابحث عن قناة..." autocomplete="off">
+    <div id="channelList" class="channel-grid"></div>
+  </section>
+
+  <div id="status" role="status"></div>
+  <footer>
+    عند الضغط على القسم تفتح صفحة مستقلة للقنوات وتنتقل تلقائياً إلى أعلاها. يظهر شعار القناة إذا أرسله السيرفر.
+    زر «نسخ رابط البث» ينسخ رابط البث المباشر. لا تشارك هذا الملف علناً لأنه يحتوي بيانات دخول الاشتراك.
+    إذا منع المتصفح الاتصال بسبب CORS أو Mixed Content، يلزم وسيط API على خادم تملكه.
+  </footer>
+</main>
+
+<script>
+const API = 'http://startseven.tn:2052/player_api.php';
+const USERNAME = '09746171';
+const PASSWORD = '15445345';
+const categories = [{"category_id": "76", "category_name": "MUSIC"}, {"category_id": "556", "category_name": "SERIE TN  LIVE"}, {"category_id": "62", "category_name": "MBC MYHD"}, {"category_id": "209", "category_name": "MAROC"}, {"category_id": "51", "category_name": "ALGERIE"}, {"category_id": "13", "category_name": "NEWS"}, {"category_id": "530", "category_name": "DRAMA ARAB"}, {"category_id": "529", "category_name": "MOVIE ARAB"}, {"category_id": "63", "category_name": "EGYPT"}, {"category_id": "83", "category_name": "LEBANON"}, {"category_id": "575", "category_name": "SHAHID"}, {"category_id": "528", "category_name": "KING"}, {"category_id": "52", "category_name": "SPORT ARAB"}, {"category_id": "438", "category_name": "TUNISIE*"}, {"category_id": "439", "category_name": "BEINSPORTS*"}, {"category_id": "441", "category_name": "BEINSPORTS H265*"}, {"category_id": "440", "category_name": "BEIN ENTERTAINMENT*"}, {"category_id": "442", "category_name": "FRANCE*"}, {"category_id": "477", "category_name": "FRANCE H265*"}, {"category_id": "443", "category_name": "CARTOON*"}, {"category_id": "444", "category_name": "SPORT ARAB*"}, {"category_id": "445", "category_name": "ALGERIE*"}, {"category_id": "446", "category_name": "MAROC*"}, {"category_id": "447", "category_name": "MBC ROTANA*"}, {"category_id": "448", "category_name": "OSN-ART*"}, {"category_id": "501", "category_name": "CHALLENGE ONDEMAND*"}, {"category_id": "455", "category_name": "EGYPT*"}, {"category_id": "456", "category_name": "NEWS*"}, {"category_id": "457", "category_name": "ISLAM*"}, {"category_id": "458", "category_name": "LIBAN"}, {"category_id": "459", "category_name": "SYRIA*"}, {"category_id": "460", "category_name": "MUSIQUE*"}, {"category_id": "461", "category_name": "ARABE DIVERS*"}];
+
+const categoryPage = document.getElementById('categoryPage');
+const channelPage = document.getElementById('channelPage');
+const categoryList = document.getElementById('categoryList');
+const channelList = document.getElementById('channelList');
+const statusEl = document.getElementById('status');
+const categorySearch = document.getElementById('categorySearch');
+const channelSearch = document.getElementById('channelSearch');
+let currentChannels = [];
+let currentCategory = null;
+
+function makeApiUrl(params) {
+  const url = new URL(API);
+  url.searchParams.set('username', USERNAME);
+  url.searchParams.set('password', PASSWORD);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  return url;
+}
+async function api(params) {
+  const response = await fetch(makeApiUrl(params));
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  return response.json();
+}
+
+function renderCategories() {
+  const q = categorySearch.value.trim().toLowerCase();
+  categoryList.replaceChildren();
+  categories.filter(c => c.category_name.toLowerCase().includes(q) || c.category_id.includes(q))
+    .forEach(c => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cat';
+      const id = document.createElement('span');
+      id.className = 'id'; id.textContent = c.category_id;
+      const name = document.createElement('span');
+      name.textContent = c.category_name;
+      button.append(id, name);
+      button.addEventListener('click', () => openCategory(c));
+      categoryList.append(button);
+    });
+}
+
+function buildStreamUrl(item) {
+  const extRaw = String(item.container_extension || 'ts').replace(/^\./, '');
+  return API.replace('/player_api.php', '') + '/live/' +
+    encodeURIComponent(USERNAME) + '/' + encodeURIComponent(PASSWORD) + '/' +
+    encodeURIComponent(item.stream_id) + '.' + extRaw;
+}
+
+async function copyStreamUrl(item, button) {
+  if (item.stream_id === undefined || item.stream_id === null) {
+    statusEl.textContent = 'السيرفر لم يرجّع رقم stream_id لهذه القناة، لذلك لا يمكن تكوين رابطها.';
+    return;
+  }
+  const link = buildStreamUrl(item);
+  try {
+    await navigator.clipboard.writeText(link);
+    button.textContent = 'تم النسخ ✓';
+    statusEl.textContent = 'تم نسخ رابط بث: ' + (item.name || item.stream_display_name || 'القناة');
+    setTimeout(() => button.textContent = 'نسخ رابط البث', 1800);
+  } catch (e) {
+    const field = document.createElement('textarea');
+    field.value = link;
+    field.style.position = 'fixed'; field.style.opacity = '0';
+    document.body.appendChild(field); field.select();
+    const ok = document.execCommand('copy');
+    field.remove();
+    statusEl.textContent = ok ? 'تم نسخ رابط البث.' : 'لم ينجح النسخ. افتح الصفحة عبر HTTPS أو انسخ الرابط يدوياً.';
+  }
+}
+
+function renderChannels() {
+  const q = channelSearch.value.trim().toLowerCase();
+  const filtered = currentChannels.filter(c => (c.name || c.stream_display_name || '').toLowerCase().includes(q));
+  channelList.replaceChildren();
+  if (!filtered.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = currentChannels.length ? 'ماكو قناة تطابق البحث.' : 'ماكو قنوات بهذا القسم.';
+    channelList.append(empty);
+    return;
+  }
+  filtered.forEach(item => {
+    const card = document.createElement('article');
+    card.className = 'channel';
+
+    const logo = document.createElement('img');
+    logo.className = 'logo';
+    logo.alt = '';
+    logo.loading = 'lazy';
+    if (item.stream_icon) {
+      logo.src = item.stream_icon;
+      logo.onerror = () => {
+        const fallback = document.createElement('div');
+        fallback.className = 'logo logo-fallback';
+        fallback.textContent = '📺';
+        logo.replaceWith(fallback);
+      };
+    } else {
+      logo.classList.add('logo-fallback');
+      logo.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text x="50%" y="55%" text-anchor="middle" font-size="34" fill="#c9bbff">TV</text></svg>');
+    }
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    const name = document.createElement('div');
+    name.className = 'channel-name';
+    name.textContent = item.name || item.stream_display_name || 'قناة بدون اسم';
+    info.append(name);
+
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'copy';
+    copy.textContent = 'نسخ رابط البث';
+    copy.addEventListener('click', () => copyStreamUrl(item, copy));
+
+    card.append(logo, info, copy);
+    channelList.append(card);
+  });
+}
+
+async function openCategory(category) {
+  currentCategory = category;
+  categoryPage.classList.add('hidden');
+  channelPage.classList.remove('hidden');
+  document.getElementById('selectedCategory').textContent = category.category_name;
+  document.getElementById('channelCount').textContent = 'جاري تحميل القنوات...';
+  channelList.replaceChildren();
+  statusEl.textContent = '';
+  channelSearch.value = '';
+  currentChannels = [];
+  window.scrollTo({top:0, behavior:'instant'});
+  try {
+    const data = await api({action:'get_live_streams', category_id:category.category_id});
+    if (!Array.isArray(data)) throw new Error('رد السيرفر غير متوقع');
+    currentChannels = data;
+    document.getElementById('channelCount').textContent = data.length + ' قناة';
+    renderChannels();
+  } catch (error) {
+    document.getElementById('channelCount').textContent = '';
+    channelList.innerHTML = '<div class="empty">تعذّر تحميل القنوات. قد يكون السبب CORS أو منع الاتصال من المتصفح.</div>';
+    statusEl.textContent = 'تفاصيل الخطأ: ' + error.message;
+  }
+}
+
+document.getElementById('backButton').addEventListener('click', () => {
+  channelPage.classList.add('hidden');
+  categoryPage.classList.remove('hidden');
+  currentChannels = [];
+  currentCategory = null;
+  statusEl.textContent = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+categorySearch.addEventListener('input', renderCategories);
+channelSearch.addEventListener('input', renderChannels);
+renderCategories();
+</script>
+
+<script>
+(() => {
+  const ACCESS_CODE = 'prime7052';
+  const overlay = document.getElementById('vaultLock');
+  const input = document.getElementById('vaultInput');
+  const message = document.getElementById('lockMessage');
+  const dots = [...document.querySelectorAll('#pinDots i')];
+  let typed = '';
+
+  function refreshDots() {
+    dots.forEach((dot, index) => dot.classList.toggle('filled', index < Math.min(typed.length, dots.length)));
+  }
+  function setTyped(value) {
+    typed = value.slice(0, 24);
+    input.value = typed;
+    refreshDots();
+    message.textContent = '';
+  }
+  function unlock() {
+    if (input.value === ACCESS_CODE) {
+      overlay.remove();
+      document.body.classList.remove('locked');
+    } else {
+      message.textContent = 'الرمز غير صحيح، حاول مرة ثانية';
+      setTyped('');
+      input.focus();
+    }
+  }
+  document.querySelectorAll('.keypad [data-key]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.key;
+      if (key === 'clear') setTyped('');
+      else if (key === 'back') setTyped(typed.slice(0, -1));
+      else setTyped(typed + key);
+      input.focus();
+    });
+  });
+  document.getElementById('unlockBtn').addEventListener('click', unlock);
+  input.addEventListener('input', () => {
+    typed = input.value;
+    refreshDots();
+    message.textContent = '';
+  });
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') unlock();
+  });
+  input.focus();
+})();
+</script>
+
+</body>
+</html>

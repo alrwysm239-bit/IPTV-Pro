@@ -31,6 +31,7 @@ import {
   X,
   Flag,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { AppSettings, Channel } from '../types/iptv';
 import { ChannelLogo } from './ChannelLogo';
@@ -127,10 +128,41 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
   const [activeMenu, setActiveMenu] = useState<'none' | 'quality' | 'audio' | 'cc' | 'sleep' | 'speed'>('none');
   const [toast, setToast] = useState('');
 
-  const candidateUrls = useMemo(
+  const rawCandidateUrls = useMemo(
     () => [channel.url, ...(channel.fallbacks || [])].filter(Boolean),
     [channel]
   );
+
+  const candidateUrls = useMemo(() => {
+    const isHttpsPage =
+      typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const isApkWebView =
+      typeof window !== 'undefined' &&
+      window.location.hostname === 'appassets.androidplatform.net';
+
+    const list: string[] = [];
+    for (const raw of rawCandidateUrls) {
+      const isHttp = raw.toLowerCase().startsWith('http://');
+      const isTs = /\.ts(\?|$)/i.test(raw);
+      if (isHttp && isHttpsPage) {
+        const proxied = `/api/stream?url=${encodeURIComponent(raw)}`;
+        if (isApkWebView) {
+          // داخل APK: لملفات .ts نجرب المباشر أولاً ثم الوسيط، ولـ .m3u8 الوسيط أولاً لتجاوز CORS
+          if (isTs) {
+            list.push(raw, proxied);
+          } else {
+            list.push(proxied, raw);
+          }
+        } else {
+          // في المتصفح HTTPS: لا يمكن تشغيل http:// مباشرة بسبب Mixed Content لذا نمررها عبر /api/stream
+          list.push(proxied);
+        }
+      } else {
+        list.push(raw);
+      }
+    }
+    return Array.from(new Set(list));
+  }, [rawCandidateUrls]);
 
   const similarChannels = useMemo(() => {
     return allChannels
@@ -235,9 +267,19 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
       );
     }, 10000);
 
-    const lower = streamUrl.toLowerCase();
+    const unwrapped = (() => {
+      if (streamUrl.startsWith('/api/stream?url=')) {
+        try {
+          return decodeURIComponent(streamUrl.slice('/api/stream?url='.length));
+        } catch {
+          return streamUrl;
+        }
+      }
+      return streamUrl;
+    })();
+    const lower = unwrapped.toLowerCase();
     const isDash = lower.includes('.mpd');
-    const isMp4OrDirect = /\.(mp4|mkv|webm|mov)(\?|$)/i.test(lower);
+    const isMp4OrDirect = /\.(mp4|mkv|webm|mov|ts)(\?|$)/i.test(lower);
 
     const bufferSec =
       settings.bufferLevel === 'low' ? 12 : settings.bufferLevel === 'high' ? 45 : 24;
@@ -609,6 +651,48 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
     }
   };
 
+  const handleCopyCurrentStream = async () => {
+    const rawCurrent = candidateUrls[urlIndex] || channel.url;
+    const activeUrl = rawCurrent.startsWith('/api/stream?url=')
+      ? (() => {
+          try {
+            return decodeURIComponent(rawCurrent.slice('/api/stream?url='.length));
+          } catch {
+            return channel.url;
+          }
+        })()
+      : rawCurrent;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(activeUrl);
+        showToastMsg(isAr ? 'تم نسخ رابط البث المباشر' : 'Stream URL copied');
+        return;
+      }
+    } catch {
+      // fallback below
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = activeUrl;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      showToastMsg(
+        ok
+          ? isAr
+            ? 'تم نسخ رابط البث المباشر'
+            : 'Stream URL copied'
+          : isAr
+            ? 'تعذر نسخ الرابط'
+            : 'Copy failed'
+      );
+    } catch {
+      showToastMsg(isAr ? 'تعذر نسخ الرابط' : 'Copy failed');
+    }
+  };
+
   // إيماءات اللمس: سحب عمودي للسطوع/الصوت ونقر مزدوج للتقديم/الترجيع
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (isLocked || e.touches.length !== 1) return;
@@ -730,16 +814,28 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
             </h2>
           </div>
 
-          {settings.backgroundAudio && (
-            <button
-              type="button"
-              onClick={() => onMinimize(true)}
-              className="px-3 py-1.5 rounded-xl glass-card text-xs font-bold text-[#00E5FF] inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              <span>{isAr ? 'خلفية' : 'Audio'}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {settings.showCopyButton && (
+              <button
+                type="button"
+                onClick={handleCopyCurrentStream}
+                className="px-3 py-1.5 rounded-xl glass-card text-xs font-bold text-slate-200 hover:text-[#00E5FF] inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{isAr ? 'نسخ الرابط' : 'Copy URL'}</span>
+              </button>
+            )}
+            {settings.backgroundAudio && (
+              <button
+                type="button"
+                onClick={() => onMinimize(true)}
+                className="px-3 py-1.5 rounded-xl glass-card text-xs font-bold text-[#00E5FF] inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>{isAr ? 'خلفية' : 'Audio'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* نافذة الفيديو */}
@@ -782,7 +878,7 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
             <div className="absolute inset-0 bg-[#090C16]/90 flex flex-col items-center justify-center p-6 text-center space-y-3 z-20">
               <AlertTriangle className="w-10 h-10 text-[#FF3B5C]" />
               <p className="text-sm font-bold text-white max-w-sm">{errorMsg}</p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -794,6 +890,17 @@ export const ProPlayerModal: React.FC<ProPlayerModalProps> = ({
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>{isAr ? 'إعادة المحاولة' : 'Retry'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyCurrentStream();
+                  }}
+                  className="glass-card px-4 py-2 rounded-xl text-xs font-bold text-[#00E5FF] inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'نسخ الرابط' : 'Copy URL'}</span>
                 </button>
                 <button
                   type="button"

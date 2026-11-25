@@ -1,4 +1,4 @@
-export type TabId = 'home' | 'channels' | 'favorites' | 'settings';
+export type TabId = 'home' | 'channels' | 'favorites' | 'telegram' | 'settings';
 
 export type CategoryId =
   | 'all'
@@ -34,6 +34,8 @@ export interface ChannelServer {
 
 export interface Channel {
   id: string;
+  streamId?: string | number;
+  xtreamCategoryId?: string;
   name: string;
   rawName?: string;
   nameAr?: string;
@@ -87,6 +89,41 @@ export interface M3USource {
   lastError?: string;
 }
 
+export interface XtreamCategory {
+  category_id: string;
+  category_name: string;
+  parent_id?: number;
+}
+
+export interface XtreamSource {
+  id: string;
+  name: string;
+  server: string;
+  username: string;
+  password: string;
+  allowedCategoryIds?: string[];
+  enabled: boolean;
+  channelCount: number;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  lastError?: string;
+}
+
+export interface XtreamUserInfo {
+  status?: string;
+  exp_date?: string | number | null;
+  active_cons?: string | number;
+  max_connections?: string | number;
+  username?: string;
+  auth?: number;
+}
+
+export interface TelegramLink {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+}
+
 export interface FavoriteGroup {
   id: string;
   name: string;
@@ -110,6 +147,17 @@ export interface AppSettings {
   corsProxy: string;
   pinEnabled: boolean;
   pinCode: string;
+  adminPin: string;
+  appName: string;
+  tagline: string;
+  notice: string;
+  activeXtreamSourceId: string;
+  hiddenCategoryIds: string[];
+  telegramLinks: TelegramLink[];
+  devName: string;
+  devUrl: string;
+  copyrightText: string;
+  showCopyButton: boolean;
   hideOffline: boolean;
   onlineOnlyFilter: boolean;
   healthPoolSize: number;
@@ -130,6 +178,7 @@ export interface SourceFetchStats {
   corsFallbackUsed: boolean;
   lastUpdated: number | null;
   notice?: string;
+  error?: string;
 }
 
 export interface HealthScanProgress {

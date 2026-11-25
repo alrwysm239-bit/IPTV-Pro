@@ -8,13 +8,25 @@ import {
   Heart,
   Sparkles,
   Globe,
+  KeyRound,
+  Megaphone,
+  Send,
+  Server,
 } from 'lucide-react';
-import { CATEGORIES } from '../constants/sources';
-import { AppSettings, CategoryId, Channel, SourceFetchStats } from '../types/iptv';
+import {
+  AppSettings,
+  CategoryId,
+  Channel,
+  SourceFetchStats,
+  XtreamCategory,
+  XtreamSource,
+} from '../types/iptv';
 import { ChannelLogo } from './ChannelLogo';
 
 interface HomeViewProps {
   channels: Channel[];
+  xtreamSources: XtreamSource[];
+  xtreamCategories: XtreamCategory[];
   historyIds: string[];
   favoriteIds: Set<string>;
   currentChannelId: string | null;
@@ -24,11 +36,15 @@ interface HomeViewProps {
   onPlay: (channel: Channel) => void;
   onToggleFavorite: (channelId: string) => void;
   onRefresh: () => void;
-  onGoToChannels: (category?: CategoryId) => void;
+  onSelectXtreamSource: (id: string) => void;
+  onOpenAdmin: () => void;
+  onGoToChannels: (category?: CategoryId, xtreamCategoryId?: string) => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   channels,
+  xtreamSources,
+  xtreamCategories,
   historyIds,
   favoriteIds,
   currentChannelId,
@@ -38,11 +54,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onPlay,
   onToggleFavorite,
   onRefresh,
+  onSelectXtreamSource,
+  onOpenAdmin,
   onGoToChannels,
 }) => {
   const isAr = settings.language === 'ar';
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId>('all');
+  const [selectedXtreamCat, setSelectedXtreamCat] = useState<string>('all');
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
+
+  const visibleXtreamCategories = useMemo(
+    () => xtreamCategories.filter((c) => !settings.hiddenCategoryIds.includes(c.category_id)),
+    [xtreamCategories, settings.hiddenCategoryIds]
+  );
 
   const channelMap = useMemo(() => {
     const map = new Map<string, Channel>();
@@ -56,9 +79,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
     const base = settings.hideOffline
       ? channels.filter((c) => c.health !== 'dead')
       : channels;
-    if (selectedCategory === 'all') return base;
-    return base.filter((c) => c.category === selectedCategory);
-  }, [channels, selectedCategory, settings.hideOffline]);
+    if (selectedXtreamCat === 'all') return base;
+    return base.filter((c) => c.xtreamCategoryId === selectedXtreamCat);
+  }, [channels, selectedXtreamCat, settings.hideOffline]);
 
   const featuredChannel = useMemo(() => {
     if (filteredByCat.length === 0) return null;
@@ -119,13 +142,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="space-y-6 pb-28">
       {/* الشريط العلوي */}
-      <header className="flex items-center justify-between pt-2">
-        <div className="flex items-center gap-2.5">
+      <header className="flex items-center justify-between gap-2 pt-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onGoToChannels()}
+            onClick={() => onGoToChannels('all', selectedXtreamCat)}
             aria-label={isAr ? 'بحث' : 'Search'}
-            className="w-10 h-10 rounded-2xl glass-card flex items-center justify-center text-slate-300 hover:text-[#00E5FF] transition-colors cursor-pointer"
+            className="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-slate-300 hover:text-[#00E5FF] transition-colors cursor-pointer"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -133,19 +156,43 @@ export const HomeView: React.FC<HomeViewProps> = ({
             type="button"
             onClick={onRefresh}
             aria-label={isAr ? 'تحديث المصادر' : 'Refresh Sources'}
-            className="w-10 h-10 rounded-2xl glass-card flex items-center justify-center text-slate-300 hover:text-[#00E5FF] transition-colors cursor-pointer"
+            className="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-slate-300 hover:text-[#00E5FF] transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin text-[#00E5FF]' : ''}`} />
           </button>
+          <button
+            type="button"
+            onClick={onOpenAdmin}
+            aria-label={isAr ? 'لوحة التحكم' : 'Control Panel'}
+            className="h-11 px-3 rounded-2xl glass-card flex items-center gap-1.5 text-xs font-extrabold text-[#00E5FF] hover:border-[#00E5FF]/50 transition-colors cursor-pointer"
+          >
+            <KeyRound className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">{isAr ? 'لوحة التحكم' : 'Admin'}</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FF3B5C] shadow-[0_0_10px_#FF3B5C]" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">
-            IPTV <span className="neon-gradient-text">PRO</span>
-          </h1>
+        <div className="text-end min-w-0">
+          <div className="flex items-center justify-end gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#FF3B5C] shadow-[0_0_10px_#FF3B5C] shrink-0" />
+            <h1 className="text-xl font-extrabold tracking-tight text-white truncate">
+              {settings.appName || 'IPTV PRO'}
+            </h1>
+          </div>
+          {settings.tagline && (
+            <p className="text-[10px] text-slate-400 truncate max-w-[200px] sm:max-w-xs">
+              {settings.tagline}
+            </p>
+          )}
         </div>
       </header>
+
+      {/* شريط التنبيه المخصص من لوحة التحكم */}
+      {settings.notice.trim() && (
+        <div className="glass-card rounded-2xl px-4 py-2.5 border border-[#FFC857]/40 bg-[#FFC857]/10 flex items-center gap-2.5 text-xs text-white font-bold">
+          <Megaphone className="w-4 h-4 text-[#FFC857] shrink-0" />
+          <span className="leading-relaxed">{settings.notice}</span>
+        </div>
+      )}
 
       {/* شريط إشعار الكاش أو التحميل التدريجي */}
       {(isFetching || stats.notice) && (
@@ -155,8 +202,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <span className="truncate">
               {isFetching
                 ? isAr
-                  ? `جاري دمج المصادر (${stats.completedSources}/${stats.totalSources}) • ${channels.length.toLocaleString()} قناة`
-                  : `Syncing sources (${stats.completedSources}/${stats.totalSources}) • ${channels.length.toLocaleString()} channels`
+                  ? `جاري مزامنة السيرفر (${stats.completedSources}/${stats.totalSources}) • ${channels.length.toLocaleString()} قناة`
+                  : `Syncing server (${stats.completedSources}/${stats.totalSources}) • ${channels.length.toLocaleString()} channels`
                 : stats.notice}
             </span>
           </div>
@@ -166,22 +213,60 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       )}
 
-      {/* شرائح التصنيفات */}
+      {/* شريط تبديل السيرفرات (السيرفر 1 / 2 / 3) */}
+      {xtreamSources.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          {xtreamSources.map((src) => {
+            const active = src.id === settings.activeXtreamSourceId;
+            return (
+              <button
+                key={src.id}
+                type="button"
+                onClick={() => {
+                  setSelectedXtreamCat('all');
+                  onSelectXtreamSource(src.id);
+                }}
+                className={`shrink-0 whitespace-nowrap min-h-[40px] px-3.5 py-2 rounded-2xl text-xs font-extrabold inline-flex items-center gap-2 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/60 shadow-[0_4px_14px_rgba(0,229,255,0.2)]'
+                    : 'glass-card text-slate-300 hover:text-white hover:border-white/20'
+                }`}
+              >
+                <Server className="w-3.5 h-3.5 shrink-0" />
+                <span>{src.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* شرائح الأقسام */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-        {CATEGORIES.map((cat) => {
-          const active = selectedCategory === cat.id;
+        <button
+          type="button"
+          onClick={() => setSelectedXtreamCat('all')}
+          className={`shrink-0 whitespace-nowrap min-h-[40px] px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            selectedXtreamCat === 'all'
+              ? 'neon-gradient text-white shadow-[0_4px_16px_rgba(0,229,255,0.3)]'
+              : 'glass-card text-slate-300 hover:text-white hover:border-white/20'
+          }`}
+        >
+          {isAr ? 'جميع الأقسام' : 'All Categories'}
+        </button>
+        {visibleXtreamCategories.map((cat) => {
+          const active = selectedXtreamCat === cat.category_id;
           return (
             <button
-              key={cat.id}
+              key={cat.category_id}
               type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              onClick={() => setSelectedXtreamCat(cat.category_id)}
+              className={`shrink-0 whitespace-nowrap min-h-[40px] px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 active
                   ? 'neon-gradient text-white shadow-[0_4px_16px_rgba(0,229,255,0.3)]'
                   : 'glass-card text-slate-300 hover:text-white hover:border-white/20'
               }`}
             >
-              {isAr ? cat.ar : cat.en}
+              {cat.category_name}
             </button>
           );
         })}
@@ -203,11 +288,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-2.5 max-w-xl">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FF3B5C] text-white text-[11px] font-extrabold shadow-lg shadow-[#FF3B5C]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FF3B5C] text-white text-[11px] font-extrabold shadow-lg shadow-[#FF3B5C]/30">
                   LIVE
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#FFC857] text-[#090C16] text-[11px] font-extrabold">
+                <span className="px-2.5 py-0.5 rounded-lg bg-[#FFC857] text-[#090C16] text-[11px] font-extrabold">
                   {featuredChannel.quality}
                 </span>
                 <span className="text-xs text-slate-200/90 font-medium">
@@ -236,7 +320,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   e.stopPropagation();
                   onPlay(featuredChannel);
                 }}
-                className="neon-gradient text-white px-5 py-3 rounded-2xl font-extrabold text-sm inline-flex items-center gap-2 shadow-[0_8px_24px_rgba(0,229,255,0.35)] group-hover:scale-[1.03] transition-transform cursor-pointer whitespace-nowrap"
+                className="neon-gradient text-white min-h-[44px] px-5 py-3 rounded-2xl font-extrabold text-sm inline-flex items-center gap-2 shadow-[0_8px_24px_rgba(0,229,255,0.35)] group-hover:scale-[1.03] transition-transform cursor-pointer whitespace-nowrap"
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>{isAr ? 'شاهد الآن' : 'Watch Now'}</span>
@@ -244,8 +328,36 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
         </section>
-      ) : (
+      ) : isFetching ? (
         <div className="rounded-3xl h-44 skeleton-shimmer border border-white/5" />
+      ) : (
+        <section className="glass-card rounded-3xl p-6 border border-white/10 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#00E5FF]/15 border border-[#00E5FF]/35 text-[#00E5FF] mx-auto flex items-center justify-center">
+            <Server className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-extrabold text-white">
+              {isAr ? 'لم يتم تحميل القنوات بعد' : 'No channels loaded yet'}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {stats.error
+                ? stats.error
+                : isAr
+                  ? 'اضغط إعادة المزامنة لجلب القنوات من السيرفر المحدد أو اختر سيرفراً آخر.'
+                  : 'Tap Sync Server to load channels or switch to another server.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="neon-gradient min-h-[42px] px-5 py-2.5 rounded-2xl text-xs font-extrabold text-white inline-flex items-center gap-2 shadow-lg cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>{isAr ? 'إعادة مزامنة السيرفر' : 'Retry Sync'}</span>
+            </button>
+          </div>
+        </section>
       )}
 
       {/* هياكل التحميل عند البدء */}
@@ -273,7 +385,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           dataSaver={settings.dataSaver}
           isAr={isAr}
           Chevron={Chevron}
-          onSeeAll={() => onGoToChannels(selectedCategory)}
+          onSeeAll={() => onGoToChannels('all', selectedXtreamCat)}
           onPlay={onPlay}
           onToggleFavorite={onToggleFavorite}
         />
@@ -289,7 +401,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           dataSaver={settings.dataSaver}
           isAr={isAr}
           Chevron={Chevron}
-          onSeeAll={() => onGoToChannels(selectedCategory)}
+          onSeeAll={() => onGoToChannels('all', selectedXtreamCat)}
           onPlay={onPlay}
           onToggleFavorite={onToggleFavorite}
         />
@@ -298,14 +410,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* المضافة حديثاً */}
       {recentlyAdded.length > 0 && (
         <ChannelGridSection
-          title={isAr ? 'المضافة حديثاً' : 'Recently Added'}
+          title={isAr ? 'القنوات المختارة' : 'Featured Channels'}
           channels={recentlyAdded}
           favoriteIds={favoriteIds}
           currentChannelId={currentChannelId}
           dataSaver={settings.dataSaver}
           isAr={isAr}
           Chevron={Chevron}
-          onSeeAll={() => onGoToChannels(selectedCategory)}
+          onSeeAll={() => onGoToChannels('all', selectedXtreamCat)}
           onPlay={onPlay}
           onToggleFavorite={onToggleFavorite}
         />
@@ -323,7 +435,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => onGoToChannels(selectedCategory)}
+              onClick={() => onGoToChannels('all', selectedXtreamCat)}
               className="text-xs font-bold text-[#00E5FF] inline-flex items-center gap-0.5 hover:underline cursor-pointer"
             >
               <span>{isAr ? 'الكل' : 'All'}</span>
@@ -375,6 +487,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </section>
       )}
+
+      {/* حقوق المطور */}
+      <footer className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <span className="text-slate-400">
+          {settings.copyrightText.trim() ||
+            (isAr
+              ? `© ${new Date().getFullYear()} ${settings.appName || 'IPTV PRO'} • جميع الحقوق محفوظة`
+              : `© ${new Date().getFullYear()} ${settings.appName || 'IPTV PRO'} • All rights reserved`)}
+        </span>
+        <a
+          href={settings.devUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-extrabold text-[#00E5FF] hover:underline"
+          dir="ltr"
+        >
+          <Send className="w-3.5 h-3.5" />
+          <span>@{settings.devName.replace(/^@/, '')}</span>
+        </a>
+      </footer>
     </div>
   );
 };

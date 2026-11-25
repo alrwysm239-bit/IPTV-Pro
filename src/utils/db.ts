@@ -1,13 +1,23 @@
-import { AppSettings, Channel, DeletedLogItem, FavoriteGroup, HistoryItem, M3USource } from '../types/iptv';
+import {
+  AppSettings,
+  Channel,
+  DeletedLogItem,
+  FavoriteGroup,
+  HistoryItem,
+  M3USource,
+  XtreamCategory,
+  XtreamSource,
+} from '../types/iptv';
 
 const DB_NAME = 'iptv_pro_db';
 const DB_VERSION = 1;
 const STORE_CHANNELS = 'channels';
 const STORE_META = 'meta';
+const MIGRATION_KEY = 'sourceMigrationVersion';
+const CURRENT_MIGRATION = 'v5_admin_124_and_sync_fix';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-// فتح قاعدة IndexedDB بشكل آمن
 function openDB(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
@@ -59,6 +69,37 @@ export async function setMeta<T>(key: string, value: T): Promise<void> {
   }
 }
 
+// تنظيف تام لجميع المصادر والقنوات السابقة عند الترحيل إلى المصدر الجديد من السكربت
+export async function migrateOldSourcesIfNeeded(defaultSettings: AppSettings): Promise<boolean> {
+  try {
+    const current = await getMeta<string>(MIGRATION_KEY, '');
+    if (current === CURRENT_MIGRATION) return false;
+
+    const db = await openDB();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction([STORE_CHANNELS, STORE_META], 'readwrite');
+      tx.objectStore(STORE_CHANNELS).clear();
+      const meta = tx.objectStore(STORE_META);
+      meta.delete('lastUpdated');
+      meta.delete('sources');
+      meta.delete('xtreamSources');
+      meta.delete('xtreamCategories');
+      meta.delete('deletedBlacklist');
+      meta.delete('deletedLog');
+      meta.delete('history');
+      meta.delete('favGroups');
+      meta.delete('pinnedIds');
+      meta.put({ key: 'settings', value: defaultSettings });
+      meta.put({ key: MIGRATION_KEY, value: CURRENT_MIGRATION });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function saveChannelsCache(channels: Channel[], updatedAt: number): Promise<void> {
   try {
     const db = await openDB();
@@ -66,7 +107,6 @@ export async function saveChannelsCache(channels: Channel[], updatedAt: number):
       const tx = db.transaction([STORE_CHANNELS, STORE_META], 'readwrite');
       const store = tx.objectStore(STORE_CHANNELS);
       store.clear();
-      // تخزين القنوات على دفعة واحدة داخل نفس المعاملة لسرعة فائقة
       for (let i = 0; i < channels.length; i++) {
         store.put(channels[i]);
       }
@@ -118,7 +158,6 @@ export async function clearAllCache(): Promise<void> {
       const tx = db.transaction([STORE_CHANNELS, STORE_META], 'readwrite');
       tx.objectStore(STORE_CHANNELS).clear();
       tx.objectStore(STORE_META).delete('lastUpdated');
-      tx.objectStore(STORE_META).delete('sources');
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
@@ -127,12 +166,18 @@ export async function clearAllCache(): Promise<void> {
   }
 }
 
-// دوال مساعدة لحفظ الإعدادات والمفضلة والمصادر والسجل
 export const loadSettings = (def: AppSettings) => getMeta<AppSettings>('settings', def);
 export const saveSettings = (s: AppSettings) => setMeta('settings', s);
 export const loadSources = (def: M3USource[]) => getMeta<M3USource[]>('sources', def);
 export const saveSources = (s: M3USource[]) => setMeta('sources', s);
-export const loadFavorites = () => getMeta<FavoriteGroup[]>('favGroups', [{ id: 'grp_all', name: 'المفضلة العامة', channelIds: [] }]);
+export const loadXtreamSources = (def: XtreamSource[]) =>
+  getMeta<XtreamSource[]>('xtreamSources', def);
+export const saveXtreamSources = (s: XtreamSource[]) => setMeta('xtreamSources', s);
+export const loadXtreamCategories = (def: XtreamCategory[]) =>
+  getMeta<XtreamCategory[]>('xtreamCategories', def);
+export const saveXtreamCategories = (c: XtreamCategory[]) => setMeta('xtreamCategories', c);
+export const loadFavorites = () =>
+  getMeta<FavoriteGroup[]>('favGroups', [{ id: 'grp_all', name: 'المفضلة العامة', channelIds: [] }]);
 export const saveFavorites = (g: FavoriteGroup[]) => setMeta('favGroups', g);
 export const loadPinned = () => getMeta<string[]>('pinnedIds', []);
 export const savePinned = (ids: string[]) => setMeta('pinnedIds', ids);
@@ -143,4 +188,3 @@ export const saveBlacklist = (urls: string[]) => setMeta('deletedBlacklist', url
 export const loadDeletedLog = () => getMeta<DeletedLogItem[]>('deletedLog', []);
 export const saveDeletedLog = (items: DeletedLogItem[]) =>
   setMeta('deletedLog', items.slice(0, 100));
-
